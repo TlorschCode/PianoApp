@@ -20,7 +20,6 @@ float g_buffer[FFT_SIZE];
 int g_index = 0;
 bool g_ready = false;
 
-// Convert frequency to musical note
 std::string frequency_to_note(double freq) {
     if (freq <= 0) return "???";
     int A4 = 440;
@@ -35,7 +34,7 @@ std::string frequency_to_note(double freq) {
 }
 
 // Audio input callback from mic
-void data_callback(ma_device* device, void* output, const void* input, ma_uint32 frameCount) {
+void mic_callback(ma_device* device, void* output, const void* input, ma_uint32 frameCount) {
     const float* fInput = (const float*)input;
     for (ma_uint32 i = 0; i < frameCount; ++i) {
         g_buffer[g_index++] = fInput[i];
@@ -52,7 +51,7 @@ int main() {
     config.capture.format = ma_format_f32;
     config.capture.channels = 1;
     config.sampleRate = SAMPLE_RATE;
-    config.dataCallback = data_callback;
+    config.dataCallback = mic_callback;
 
     ma_device device;
     if (ma_device_init(NULL, &config, &device) != MA_SUCCESS) {
@@ -61,7 +60,7 @@ int main() {
     }
 
     ma_device_start(&device);
-    std::cout << "🎤 Listening for notes...\n";
+    std::cout << "Listening for notes...\n";
 
     // FFTW setup
     std::vector<double> input(FFT_SIZE);
@@ -97,7 +96,7 @@ int main() {
             double freq = peakIndex * (double)SAMPLE_RATE / FFT_SIZE;
             std::string note = frequency_to_note(freq);
 
-            std::cout << "🎵 Note: " << note << " (" << freq << " Hz)\n";
+            std::cout << "Note: " << note << " (" << freq << " Hz)\n";
 
             g_ready = false;
         }
