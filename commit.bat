@@ -15,4 +15,4 @@ git commit -m "%~1"
 REM Push to the current branch
 git push
 
-echo Commit and push done!
+echo Committed and Pushed all files!
