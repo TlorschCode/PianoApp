@@ -16,7 +16,7 @@ void RunGUI() {
     SetTargetFPS(60);
     //| ALL VARIABLES MUST BE DECLARED BELOW
     SetTextLineSpacing(16);
-    Font roboto = LoadFont("src/assets/Roboto-Black.ttf");
+    Font roboto = LoadFontEx("src/assets/Roboto-Black.ttf", 128, NULL, 0);
 
     while (!WindowShouldClose()) {
         BeginDrawing();
