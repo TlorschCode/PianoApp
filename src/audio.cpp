@@ -4,6 +4,7 @@
 #include "../lib/fftw/fftw3.h"
 #include "globals.h"
 
+#include <atomic>
 #include <iostream>
 #include <vector>
 #include <cmath>
@@ -22,6 +23,7 @@ int g_index = 0;
 bool g_ready = false;
 
 ma_device device;
+
 
 std::string frequency_to_note(double freq) {
     if (freq <= 0) return "???";
@@ -48,23 +50,8 @@ void mic_callback(ma_device* device, void* output, const void* input, ma_uint32 
     }
 }
 
-// void InitAudio() {
-//     ma_device_config config = ma_device_config_init(ma_device_type_capture);
-//     config.capture.format = ma_format_f32;
-//     config.capture.channels = 1;
-//     config.sampleRate = SAMPLE_RATE;
-//     config.dataCallback = mic_callback;
-//     ma_device device;
-//     if (ma_device_init(NULL, &config, &device) != MA_SUCCESS) {
-//         std::cerr << "Failed to initialize audio device\n";
-//         return;
-//     }
-    
-//     // Start Microphone
-//     ma_device_start(&device);
-// }
-
 void InitAudio() {
+    runningProgram = true;
     try {
         ma_device_config config = ma_device_config_init(ma_device_type_capture);
         config.capture.format = ma_format_f32;
@@ -84,10 +71,9 @@ void InitAudio() {
         // FFTW setup
         std::vector<double> input(FFT_SIZE);
         std::vector<fftw_complex> output(FFT_SIZE / 2 + 1);
-        fftw_plan plan = fftw_plan_dft_r2c_1d(
-            FFT_SIZE, input.data(), output.data(), FFTW_ESTIMATE);
+        fftw_plan plan = fftw_plan_dft_r2c_1d(FFT_SIZE, input.data(), output.data(), FFTW_ESTIMATE);
         std::cout << "Initialized Audio";
-        while (true) {
+        while (runningProgram) {
             if (g_ready) {
                 // Copy mic buffer into FFT input (convert to double)
                 for (int i = 0; i < FFT_SIZE; ++i) {
@@ -118,7 +104,6 @@ void InitAudio() {
                 g_ready = false;
             }
         }
-
         fftw_destroy_plan(plan);
         ma_device_uninit(&device);
     } catch (const std::exception& e) {
