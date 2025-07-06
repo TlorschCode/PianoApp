@@ -16,4 +16,3 @@ REM Push to the current branch
 git push
 
 echo Commit and push done!
-pause
