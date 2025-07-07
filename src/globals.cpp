@@ -1,4 +1,5 @@
 #include "globals.h"
 
-std::string currentNote = "None";
-std::atomic<bool> runningProgram = true;
+std::string CURRENTNOTE = "None";
+std::atomic<bool> RUNNINGPROGRAM = true;
+std::atomic<bool> SHARPS = true;

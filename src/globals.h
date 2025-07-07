@@ -2,5 +2,6 @@
 #include <string>
 #include <atomic>
 
-extern std::string currentNote;
-extern std::atomic<bool> runningProgram;
+extern std::string CURRENTNOTE;
+extern std::atomic<bool> RUNNINGPROGRAM;
+extern std::atomic<bool> SHARPS;

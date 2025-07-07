@@ -6,6 +6,7 @@ src/gui.exe
 #include <string>
 #include <atomic>
 #include <iostream>
+#include <algorithm>
 
 #include "../lib/raylib/include/raylib.h"
 #include "globals.h"
@@ -24,18 +25,50 @@ void drawStaff(Texture2D txtr) {
         WHITE
     );
 }
-// 40 pixels between each line
-// 495 is the bottom line for Treble Clef
 
 // Displays which note is being detected by putting it on the grand staff
-void drawNote(Texture2D noteTxtr, Texture2D flatTxtr, Texture2D sharpTxtr, Texture2D naturalTxtr, string noteRaw) {
+void drawNote(Texture2D noteTxtr, Texture2D sharpTxtr, Texture2D flatTxtr, Texture2D naturalTxtr, string noteRaw) {
+    // 40 pixels between each line
+    // 495 is the bottom line for Treble Clef
     string trebleLines[5] = {"E4", "G4", "B4", "D5", "F5"};
-    string trebleSpaces[5] = {"D4", "F4", "A4", "C5", "E5"};
-    string note = noteRaw.substr(0, 2);
+    int sizeLines = sizeof(trebleLines) / sizeof(trebleLines[0]);
+    string trebleSpaces[6] = {"D4", "F4", "A4", "C5", "E5", "G5"};
+    int sizeSpaces = sizeof(trebleSpaces) / sizeof(trebleSpaces[0]);
+
+    string note = (noteRaw.length() == 3) ? (noteRaw.substr(0, 1) + noteRaw.back()) : noteRaw;
     char accidental = (noteRaw.length() == 3) ? noteRaw.at(1) : '\0';
-    int octave = noteRaw.back() - 0;
-    if (!(note == "C4" || octave < 4)) {  // Disable ledger lines and base clef for debugging
-        ;
+    int octave = noteRaw.back() - '0';
+    bool isLine = find(begin(trebleLines), end(trebleLines), note) != end(trebleLines);
+    bool isSpace = find(begin(trebleSpaces), end(trebleSpaces), note) != end(trebleSpaces);
+    bool valid = isLine || isSpace;
+    int y = 0;
+    int x = 500;
+    float noteStep = 40.9;
+
+    if (valid) {
+        if (isLine) {
+            auto search = find(trebleLines, trebleLines + sizeLines, note);
+            int index = search - trebleLines;
+            y = 440 - (noteStep * index);
+        } else {
+            auto search = find(trebleSpaces, trebleSpaces + sizeSpaces, note);
+            int index = search - trebleSpaces;
+            y = 460 - (noteStep * index);
+        }
+        DrawTexture(noteTxtr, x, y - ((noteTxtr.height / 2) - 10), WHITE);
+        if (accidental != '\0') {
+            switch (accidental) {
+                case '#':
+                    DrawTexture(sharpTxtr, x - 16, y + ((noteTxtr.height / 2) - 55), WHITE);
+                    break;
+                case 'b':
+                    DrawTexture(flatTxtr, x - 9, y + ((noteTxtr.height / 2) - 70), WHITE);
+                    break;
+                case 'N':
+                    DrawTexture(naturalTxtr, x - 20,  y + ((noteTxtr.height / 2) - 63), WHITE);
+                    break;
+            } 
+        }
     }
 }
 
@@ -73,27 +106,38 @@ void RunGUI() {
     Texture2D noteTexture = LoadTextureFromImage(tempImage);
     UnloadImage(tempImage);
 
+    Rectangle toggleArea = {WINWIDTH - 250, WINHEIGHT - 100, 100, 50};
+
     while (!WindowShouldClose()) {
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            Vector2 mouse = GetMousePosition();
+            if (CheckCollisionPointRec(mouse, toggleArea)) {
+                SHARPS = !SHARPS;
+            }
+        }
         BeginDrawing();
         ClearBackground(RAYWHITE);
         drawStaff(grandStaffTexture);
-        DrawTexture(flatTexture, ((WINWIDTH / 2) - (flatTexture.width / 2)) - 50, (WINHEIGHT / 2) - (flatTexture.height / 2), WHITE);
-        DrawTexture(sharpTexture, (WINWIDTH / 2) - (sharpTexture.width / 2), (WINHEIGHT / 2) - (sharpTexture.height / 2), WHITE);
-        DrawTexture(naturalTexture, (WINWIDTH / 2) - (naturalTexture.width / 2) + 50, (WINHEIGHT / 2) - (naturalTexture.height / 2), WHITE);
-        DrawTexture(noteTexture, (WINWIDTH / 2) - (noteTexture.width / 2) + 100, (WINHEIGHT / 2) - (noteTexture.height / 2), WHITE);
+        drawNote(noteTexture, sharpTexture, flatTexture, naturalTexture, CURRENTNOTE);
+        
+        // FLAT TOGGLE
+        DrawRectangleRec(toggleArea, SHARPS ? GREEN : GRAY);
+        // Draw sliding circle
+        float circleX = toggleArea.x + (SHARPS ? toggleArea.width - toggleArea.height : 0);
+        float circleY = toggleArea.y;
+        DrawCircleV({ circleX + toggleArea.height / 2, circleY + toggleArea.height / 2 }, toggleArea.height / 2 - 4, WHITE);
+        // Label
+        DrawTextEx(roboto, SHARPS ? "SHARPS" : "FLATS", {toggleArea.x + 110, toggleArea.y + 10}, 35, 2, BLACK);
 
-        DrawTextEx(roboto, currentNote.c_str(), {100, 100}, 40, 2, DARKGRAY);
+        DrawTextEx(roboto, CURRENTNOTE.c_str(), {100, 100}, 40, 2, DARKGRAY);
         EndDrawing();
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            Vector2 mousePos = GetMousePosition();
-            cout << "Mouse clicked at: (" << mousePos.x << ", " << mousePos.y << ")\n";
-        }
+        
     }
     UnloadTexture(grandStaffTexture);
     UnloadTexture(sharpTexture);
     UnloadTexture(flatTexture);
     UnloadTexture(naturalTexture);
     UnloadTexture(noteTexture);
-    runningProgram = false;
+    RUNNINGPROGRAM = false;
     CloseWindow();
 }
