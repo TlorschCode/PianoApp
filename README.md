@@ -4,7 +4,7 @@
 
 </br>
 <h3 align="center"><b>DISCLAIMER</b></h3>
-<p align="center">This project is still very much in its Alpha stages.</p>
+<p align="center">This project is still very much in its Alpha stages.</p></br>
 
 <h2 align="center">Audio Detection</h2>
 I'm using FFTW 3 as my FFT library, and am applying a number of algorithms to the data I get from the FFT function; namely a Hanning Window, a Harmonic Product Spectrum, and a Parabolic Product Spectrum.</br>
