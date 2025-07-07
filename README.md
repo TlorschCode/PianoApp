@@ -1,7 +1,6 @@
 <h1 align="center">I suck at sightreading music</h1>
-
-## And so, I present to you, the Flashcard App
-###### (For Lack of a Better Name)
+<h2 align="center">And so, I present to you, the Flashcard App</h2>
+<h6 align="center">(For Lack of a Better Name)</h6>
 
 ---
 
