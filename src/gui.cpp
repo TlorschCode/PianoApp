@@ -16,6 +16,16 @@ using namespace std;
 const float WINWIDTH = 1920;
 const float WINHEIGHT = 1080;
 
+Font roboto;
+
+void displayText(const char *text, float x, float y, float fontSize, Color color) {
+    DrawTextEx(roboto, text, {x, y}, fontSize, 2, color);
+}
+
+void displayText(const char *text, float x, float y, Color color) {
+    DrawTextEx(roboto, text, {x, y}, 30, 2, color);
+}
+
 // Draws grand staff more easily
 void drawStaff(Texture2D txtr) {
     DrawTexture(
@@ -119,14 +129,58 @@ void drawNote(Texture2D noteTxtr, Texture2D sharpTxtr, Texture2D flatTxtr, Textu
     }
 }
 
+void drawSharpToggle(float x, float y, char hoveredButton, Color *sharpCol, Color *flatCol) {
+    Color colorHoverGray = {150, 150, 150, 255};
+    float hoverGray = 150.0f;
+    DrawRectangle(x - 20, y, 40, 40, GRAY);
+    DrawCircle(x, y, 20, GRAY);
+    DrawCircle(x, y + 40, 20, GRAY);
+
+    float mainSharpCol = (float)(sharpCol->r);
+    float mainFlatCol = (float)(flatCol->r);
+    Color betweenSharpCol = *sharpCol;
+    Color betweenFlatCol = *flatCol;
+    float interpolationSpeed = 0.3;
+    if (hoveredButton == '#') {
+        unsigned char newCol = (unsigned char)(mainSharpCol + ((hoverGray - mainSharpCol) * interpolationSpeed));
+        betweenSharpCol = {newCol, newCol, newCol, 255};
+        *sharpCol = betweenSharpCol;
+        newCol = (unsigned char)(mainFlatCol + ((GRAY.r - mainFlatCol) * interpolationSpeed));
+        betweenFlatCol = {newCol, newCol, newCol, 255};
+        *flatCol = betweenFlatCol;
+    } else if (hoveredButton == 'b') {
+        unsigned char newCol = (unsigned char)(mainFlatCol + ((hoverGray - mainFlatCol) * interpolationSpeed));
+        betweenFlatCol = {newCol, newCol, newCol, 255};
+        *flatCol = betweenFlatCol;
+        newCol = (unsigned char)(mainSharpCol + ((GRAY.r - mainSharpCol) * interpolationSpeed));
+        betweenSharpCol = {newCol, newCol, newCol, 255};
+        *sharpCol = betweenSharpCol;
+    } else {
+        unsigned char newCol = (unsigned char)(mainSharpCol + ((GRAY.r - mainSharpCol) * interpolationSpeed));
+        betweenSharpCol = {newCol, newCol, newCol, 255};
+        *sharpCol = betweenSharpCol;
+        newCol = (unsigned char)(mainFlatCol + ((GRAY.r - mainFlatCol) * interpolationSpeed));
+        betweenFlatCol = {newCol, newCol, newCol, 255};
+        *flatCol = betweenFlatCol;
+    }
+    DrawCircle(x, y, 18, betweenSharpCol);
+    DrawCircle(x, y + 39, 18, betweenFlatCol);
+    if (SHARPS) {
+        DrawRing({x, y}, 15, 18, 0, 360, 360, DARKGRAY);
+    } else {
+        DrawRing({x, y + 40}, 15, 18, 0, 360, 360, DARKGRAY);
+    }
+    displayText("#", x - 6, y - 14, BLACK);
+    displayText("b", x - 6, y + 24, BLACK);
+}
+
 // Handles all GUI logic
 void RunGUI() {
-    
     InitWindow(WINWIDTH, WINHEIGHT, "Piano Flashcard App");
     SetTargetFPS(60);
-    //| ALL VARIABLES MUST BE DECLARED BELOW
     SetTextLineSpacing(16);
-    Font roboto = LoadFontEx("assets/Roboto-Black.ttf", 128, NULL, 0);
+    //| ALL LOADING MUST BE DONE BELOW
+    roboto = LoadFontEx("assets/Roboto-Black.ttf", 128, NULL, 0);
 
     Image tempImage = LoadImage("assets/GrandStaff.png");
     ImageResize(&tempImage, tempImage.width * 2, tempImage.height * 2);
@@ -158,29 +212,32 @@ void RunGUI() {
     Texture2D ledgerTexture = LoadTextureFromImage(tempImage);
     UnloadImage(tempImage);
 
-    Rectangle toggleArea = {WINWIDTH - 250, WINHEIGHT - 100, 100, 50};
+    Color sharpCircleCol = GRAY;
+    Color flatCircleCol = GRAY;
+    Vector2 toggleLoc = {WINWIDTH - 100, 100};
+    char hovered = 'X';
 
     while (!WindowShouldClose()) {
+        Vector2 mouse = GetMousePosition();
+        if (CheckCollisionPointCircle(mouse, toggleLoc, 20)) {
+            hovered = '#';
+        } else if (CheckCollisionPointCircle(mouse, {toggleLoc.x, toggleLoc.y + 40}, 20)) {
+            hovered = 'b';
+        } else {
+            hovered = 'X';
+        }
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            Vector2 mouse = GetMousePosition();
-            if (CheckCollisionPointRec(mouse, toggleArea)) {
-                SHARPS = !SHARPS;
+            if (CheckCollisionPointCircle(mouse, toggleLoc, 20)) {
+                SHARPS = true;
+            } else if (CheckCollisionPointCircle(mouse, {toggleLoc.x, toggleLoc.y + 40}, 20)) {
+                SHARPS = false;
             }
-            std::cout << "Mouse Clicked at (" << mouse.x << ", " << mouse.y << ")\n";
         }
         BeginDrawing();
         ClearBackground(RAYWHITE);
         drawStaff(grandStaffTexture);
         drawNote(noteTexture, sharpTexture, flatTexture, naturalTexture, ledgerTexture, CURRENTNOTE);
-        
-        // FLAT TOGGLE
-        DrawRectangleRec(toggleArea, SHARPS ? GREEN : GRAY);
-        // Draw sliding circle
-        float circleX = toggleArea.x + (SHARPS ? toggleArea.width - toggleArea.height : 0);
-        float circleY = toggleArea.y;
-        DrawCircleV({ circleX + toggleArea.height / 2, circleY + toggleArea.height / 2 }, toggleArea.height / 2 - 4, WHITE);
-        // Label
-        DrawTextEx(roboto, SHARPS ? "SHARPS" : "FLATS", {toggleArea.x + 110, toggleArea.y + 10}, 35, 2, BLACK);
+        drawSharpToggle(WINWIDTH - 100, 100, hovered, &sharpCircleCol, &flatCircleCol);
 
         DrawTextEx(roboto, CURRENTNOTE.c_str(), {100, 100}, 40, 2, DARKGRAY);
         EndDrawing();
@@ -190,6 +247,7 @@ void RunGUI() {
     UnloadTexture(flatTexture);
     UnloadTexture(naturalTexture);
     UnloadTexture(noteTexture);
+    UnloadFont(roboto);
     RUNNINGPROGRAM = false;
     CloseWindow();
 }
