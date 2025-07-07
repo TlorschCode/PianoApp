@@ -1,4 +1,4 @@
-I suck at sight reading music :-:
+<center> # I suck at sight reading music </center>
 ## And so, I present to you, the Flashcard App
 ###### (For Lack of a Better Name)
 
