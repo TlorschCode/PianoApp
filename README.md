@@ -2,7 +2,7 @@
 <h2 align="center">And so, I present to you, the Flashcard App</h2>
 <h6 align="center">(For Lack of a Better Name)</h6>
 
-<p align="center", style="bold">DISCLAIMER</p>
+<p align="center"><b>DISCLAIMER</b></p>
 <p align="center">This project is still very much in its Alpha stages.</p>
 
 <h2 align="center">Audio Detection</h2>
