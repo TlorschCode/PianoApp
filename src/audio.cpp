@@ -1,15 +1,15 @@
 // g++ src/audio.cpp src/globals.cpp -o src/audio.exe -std=c++20 -Ilib -Ilib/fftw -Llib/fftw -lfftw3 -lm
-#define MINIAUDIO_IMPLEMENTATION
-#include "../lib/miniaudio.h"
-#include "../lib/fftw/fftw3.h"
-#include "globals.h"
-
 #include <atomic>
 #include <iostream>
 #include <vector>
 #include <cmath>
 #include <string>
 #include <algorithm>
+
+#define MINIAUDIO_IMPLEMENTATION
+#include "../lib/miniaudio.h"
+#include "../lib/fftw/fftw3.h"
+#include "globals.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
