@@ -27,47 +27,94 @@ void drawStaff(Texture2D txtr) {
 }
 
 // Displays which note is being detected by putting it on the grand staff
-void drawNote(Texture2D noteTxtr, Texture2D sharpTxtr, Texture2D flatTxtr, Texture2D naturalTxtr, string noteRaw) {
-    // 40 pixels between each line
-    // 495 is the bottom line for Treble Clef
-    string trebleLines[5] = {"E4", "G4", "B4", "D5", "F5"};
-    int sizeLines = sizeof(trebleLines) / sizeof(trebleLines[0]);
+void drawNote(Texture2D noteTxtr, Texture2D sharpTxtr, Texture2D flatTxtr, Texture2D naturalTxtr, Texture2D ledgerTxtr, string noteRaw) {
+    // 40.9 pixels between each line
+    // 495 is the bottom line for Treble Clef, or E4
+    // 785 is the bottom line for Base Clef, or G2
+    string trebleLines[6] = {"C4", "E4", "G4", "B4", "D5", "F5"};
+    int sizeTrebleLines = sizeof(trebleLines) / sizeof(trebleLines[0]);
     string trebleSpaces[6] = {"D4", "F4", "A4", "C5", "E5", "G5"};
-    int sizeSpaces = sizeof(trebleSpaces) / sizeof(trebleSpaces[0]);
+    int sizeTrebleSpaces = sizeof(trebleSpaces) / sizeof(trebleSpaces[0]);
+
+    string baseLines[5] = {"G2", "B2", "D3", "F3", "A3"};
+    int sizeBaseLines = sizeof(baseLines) / sizeof(baseLines[0]);
+    string baseSpaces[6] = {"F2", "A2", "C3", "E3", "G3", "B3"};
+    int sizeBaseSpaces = sizeof(baseSpaces) / sizeof(baseSpaces[0]);
 
     string note = (noteRaw.length() == 3) ? (noteRaw.substr(0, 1) + noteRaw.back()) : noteRaw;
     char accidental = (noteRaw.length() == 3) ? noteRaw.at(1) : '\0';
     int octave = noteRaw.back() - '0';
-    bool isLine = find(begin(trebleLines), end(trebleLines), note) != end(trebleLines);
-    bool isSpace = find(begin(trebleSpaces), end(trebleSpaces), note) != end(trebleSpaces);
-    bool valid = isLine || isSpace;
+    bool isTrebleLine = find(begin(trebleLines), end(trebleLines), note) != end(trebleLines);
+    bool isTrebleSpace = find(begin(trebleSpaces), end(trebleSpaces), note) != end(trebleSpaces);
+    bool isTreble = isTrebleLine || isTrebleSpace;
+
+    bool isBaseLine = find(begin(baseLines), end(baseLines), note) != end(baseLines);
+    bool isBaseSpace = find(begin(baseSpaces), end(baseSpaces), note) != end(baseSpaces);
+    bool isBase = isBaseLine || isBaseSpace;
+
     int y = 0;
     int x = 500;
     float noteStep = 40.9;
 
-    if (valid) {
-        if (isLine) {
-            auto search = find(trebleLines, trebleLines + sizeLines, note);
+    int sharpXOffset = -26;
+    int flatXOffset = -9;
+    int flatYOffset = 15;
+    int naturalXOffset = -20;
+    int naturalYOfffset = 45;
+    int ledgerXOffset = 28;
+
+    int noteYOffset = 45;
+
+    if (isTreble) {
+        if (isTrebleLine) {
+            auto search = find(trebleLines, trebleLines + sizeTrebleLines, note);
             int index = search - trebleLines;
-            y = 440 - (noteStep * index);
+            y = 535 - (noteStep * index);
         } else {
-            auto search = find(trebleSpaces, trebleSpaces + sizeSpaces, note);
+            auto search = find(trebleSpaces, trebleSpaces + sizeTrebleSpaces, note);
             int index = search - trebleSpaces;
-            y = 460 - (noteStep * index);
+            y = 515 - (noteStep * index);
         }
-        DrawTexture(noteTxtr, x, y - ((noteTxtr.height / 2) - 10), WHITE);
+        if (note == "C4") {
+            DrawTexture(ledgerTxtr, x + ledgerXOffset, y - (ledgerTxtr.height / 2), WHITE);
+        }
+        DrawTexture(noteTxtr, x, y - ((noteTxtr.height / 2) + noteYOffset), WHITE);
         if (accidental != '\0') {
             switch (accidental) {
                 case '#':
-                    DrawTexture(sharpTxtr, x - 16, y + ((noteTxtr.height / 2) - 55), WHITE);
+                    DrawTexture(sharpTxtr, x + sharpXOffset, y - (sharpTxtr.height / 2), WHITE);
                     break;
                 case 'b':
-                    DrawTexture(flatTxtr, x - 9, y + ((noteTxtr.height / 2) - 70), WHITE);
+                    DrawTexture(flatTxtr, x + flatXOffset, y - ((flatTxtr.height / 2) + flatYOffset), WHITE);
                     break;
                 case 'N':
-                    DrawTexture(naturalTxtr, x - 20,  y + ((noteTxtr.height / 2) - 63), WHITE);
+                    DrawTexture(naturalTxtr, x + naturalXOffset,  y - ((naturalTxtr.height / 2) + naturalYOfffset), WHITE);
                     break;
-            } 
+            }
+        }
+    } else if (isBase) {
+        if (isBaseLine) {
+            auto search = find(baseLines, baseLines + sizeBaseLines, note);
+            int index = search - baseLines;
+            y = 785 - (noteStep * index);
+        } else {
+            auto search = find(baseSpaces, baseSpaces + sizeBaseSpaces, note);
+            int index = search - baseSpaces;
+            y = 805 - (noteStep * index);
+        }
+        DrawTexture(noteTxtr, x, y - ((noteTxtr.height / 2) + noteYOffset), WHITE);
+        if (accidental != '\0') {
+            switch (accidental) {
+                case '#':
+                    DrawTexture(sharpTxtr, x + sharpXOffset, y - (sharpTxtr.height / 2), WHITE);
+                    break;
+                case 'b':
+                    DrawTexture(flatTxtr, x + flatXOffset, y - ((flatTxtr.height / 2) + flatYOffset), WHITE);
+                    break;
+                case 'N':
+                    DrawTexture(naturalTxtr, x + naturalXOffset,  y - ((naturalTxtr.height / 2) + naturalYOfffset), WHITE);
+                    break;
+            }
         }
     }
 }
@@ -106,6 +153,11 @@ void RunGUI() {
     Texture2D noteTexture = LoadTextureFromImage(tempImage);
     UnloadImage(tempImage);
 
+    tempImage = LoadImage("assets/LedgerLine.png");
+    ImageResize(&tempImage, tempImage.width / 2.5, tempImage.height / 2);
+    Texture2D ledgerTexture = LoadTextureFromImage(tempImage);
+    UnloadImage(tempImage);
+
     Rectangle toggleArea = {WINWIDTH - 250, WINHEIGHT - 100, 100, 50};
 
     while (!WindowShouldClose()) {
@@ -114,11 +166,12 @@ void RunGUI() {
             if (CheckCollisionPointRec(mouse, toggleArea)) {
                 SHARPS = !SHARPS;
             }
+            std::cout << "Mouse Clicked at (" << mouse.x << ", " << mouse.y << ")\n";
         }
         BeginDrawing();
         ClearBackground(RAYWHITE);
         drawStaff(grandStaffTexture);
-        drawNote(noteTexture, sharpTexture, flatTexture, naturalTexture, CURRENTNOTE);
+        drawNote(noteTexture, sharpTexture, flatTexture, naturalTexture, ledgerTexture, CURRENTNOTE);
         
         // FLAT TOGGLE
         DrawRectangleRec(toggleArea, SHARPS ? GREEN : GRAY);
@@ -131,7 +184,6 @@ void RunGUI() {
 
         DrawTextEx(roboto, CURRENTNOTE.c_str(), {100, 100}, 40, 2, DARKGRAY);
         EndDrawing();
-        
     }
     UnloadTexture(grandStaffTexture);
     UnloadTexture(sharpTexture);

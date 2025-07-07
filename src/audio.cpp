@@ -113,16 +113,44 @@ void InitAudio() {
 
         while (RUNNINGPROGRAM) {
             if (g_ready) {
-                // Apply Hann window to the buffer
                 for (int i = 0; i < FFT_SIZE; ++i) {
                     input[i] = g_buffer[i] * (0.5 - 0.5 * cos(2.0 * M_PI * i / (FFT_SIZE - 1)));
                 }
 
                 fftw_execute(plan);
 
-                // Use HPS to get the fundamental frequency bin
-                int peakIndex = get_fundamental_hps(output, FFT_SIZE);
-                double freq = peakIndex * (double)SAMPLE_RATE / FFT_SIZE;
+                int peakIndex = get_fundamental_hps(output, FFT_SIZE, 3);
+
+                if (peakIndex <= 0) peakIndex = 1;
+                if (peakIndex >= (FFT_SIZE / 2)) peakIndex = (FFT_SIZE / 2) - 1;
+
+                auto mag = [&](int i) {
+                    return sqrt(output[i][0] * output[i][0] + output[i][1] * output[i][1]);
+                };
+
+                double alpha = mag(peakIndex - 1);
+                double beta = mag(peakIndex);
+                double gamma = mag(peakIndex + 1);
+
+                double p = 0.0;
+                double denominator = (alpha - 2 * beta + gamma);
+
+                if (denominator == 0 || isnan(denominator) || isinf(denominator)) {
+                    p = 0;
+                } else {
+                    p = 0.5 * (alpha - gamma) / denominator;
+                    if (p < -0.5 || p > 0.5) {
+                        p = 0; // Clamp large or noisy interpolations
+                    }
+                }
+
+                double trueIndex = peakIndex + p;
+                double freq = trueIndex * (double)SAMPLE_RATE / FFT_SIZE;
+
+                if (freq < 20 || freq > 1500) {
+                    g_ready = false;
+                    continue;
+                }
 
                 CURRENTNOTE = frequency_to_note(freq);
                 g_ready = false;
