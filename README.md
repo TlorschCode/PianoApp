@@ -1,4 +1,4 @@
-<center> I suck at sight reading music </center>
+<p align="center">I suck at sightreading music</p>
 
 ## And so, I present to you, the Flashcard App
 ###### (For Lack of a Better Name)
