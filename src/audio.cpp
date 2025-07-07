@@ -5,6 +5,8 @@
 #include <cmath>
 #include <string>
 #include <algorithm>
+#include <thread>
+#include <mutex>
 
 #define MINIAUDIO_IMPLEMENTATION
 #include "../lib/miniaudio.h"
@@ -21,11 +23,13 @@ const int FFT_SIZE = 4096;
 float g_buffer[FFT_SIZE];
 int g_index = 0;
 bool g_ready = false;
+std::mutex bufferMutex;
+float processingBuffer[FFT_SIZE];
+bool dataReady = false;
 
 ma_device device;
 
 using namespace std;
-
 
 string frequency_to_note(double freq) {
     if (freq <= 0) return "???";
@@ -37,21 +41,22 @@ string frequency_to_note(double freq) {
     } else {
         notes = {"C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"};
     }
-    
+
     int note = noteIndex % 12;
     int octave = noteIndex / 12 - 1;
 
     return notes[note] + to_string(octave);
 }
 
-// Audio input callback from mic
 void mic_callback(ma_device* device, void* output, const void* input, ma_uint32 frameCount) {
     const float* fInput = (const float*)input;
     for (ma_uint32 i = 0; i < frameCount; ++i) {
         g_buffer[g_index++] = fInput[i];
         if (g_index >= FFT_SIZE) {
             g_index = 0;
-            g_ready = true;
+            std::lock_guard<std::mutex> lock(bufferMutex);
+            std::copy(std::begin(g_buffer), std::end(g_buffer), std::begin(processingBuffer));
+            dataReady = true;
         }
     }
 }
@@ -60,19 +65,16 @@ int get_fundamental_hps(const std::vector<fftw_complex>& spectrum, int fftSize, 
     int len = fftSize / 2 + 1;
     std::vector<double> hps(len, 0.0);
 
-    // Fill HPS vector with magnitudes
     for (int i = 1; i < len; ++i) {
         hps[i] = sqrt(spectrum[i][0] * spectrum[i][0] + spectrum[i][1] * spectrum[i][1]);
     }
 
-    // Apply HPS: multiply downsampled harmonics
     for (int h = 2; h <= maxHarmonics; ++h) {
         for (int i = 1; i < len / h; ++i) {
             hps[i] *= sqrt(spectrum[i * h][0] * spectrum[i * h][0] + spectrum[i * h][1] * spectrum[i * h][1]);
         }
     }
 
-    // Find index of maximum in HPS
     int peakIndex = 1;
     double maxVal = hps[1];
     for (int i = 2; i < len / maxHarmonics; ++i) {
@@ -106,58 +108,65 @@ void InitAudio() {
 
         cout << "Listening for notes...\n";
 
-        vector<double> input(FFT_SIZE);
-        vector<fftw_complex> output(FFT_SIZE / 2 + 1);
-        fftw_plan plan = fftw_plan_dft_r2c_1d(FFT_SIZE, input.data(), output.data(), FFTW_ESTIMATE);
-        cout << "Initialized Audio";
+        thread audioWorker([] {
+            vector<double> input(FFT_SIZE);
+            vector<fftw_complex> output(FFT_SIZE / 2 + 1);
+            fftw_plan plan = fftw_plan_dft_r2c_1d(FFT_SIZE, input.data(), output.data(), FFTW_ESTIMATE);
 
-        while (RUNNINGPROGRAM) {
-            if (g_ready) {
-                for (int i = 0; i < FFT_SIZE; ++i) {
-                    input[i] = g_buffer[i] * (0.5 - 0.5 * cos(2.0 * M_PI * i / (FFT_SIZE - 1)));
-                }
+            while (RUNNINGPROGRAM) {
+                bool doWork = false;
 
-                fftw_execute(plan);
-
-                int peakIndex = get_fundamental_hps(output, FFT_SIZE, 3);
-
-                if (peakIndex <= 0) peakIndex = 1;
-                if (peakIndex >= (FFT_SIZE / 2)) peakIndex = (FFT_SIZE / 2) - 1;
-
-                auto mag = [&](int i) {
-                    return sqrt(output[i][0] * output[i][0] + output[i][1] * output[i][1]);
-                };
-
-                double alpha = mag(peakIndex - 1);
-                double beta = mag(peakIndex);
-                double gamma = mag(peakIndex + 1);
-
-                double p = 0.0;
-                double denominator = (alpha - 2 * beta + gamma);
-
-                if (denominator == 0 || isnan(denominator) || isinf(denominator)) {
-                    p = 0;
-                } else {
-                    p = 0.5 * (alpha - gamma) / denominator;
-                    if (p < -0.5 || p > 0.5) {
-                        p = 0; // Clamp large or noisy interpolations
+                {
+                    lock_guard<mutex> lock(bufferMutex);
+                    if (dataReady) {
+                        for (int i = 0; i < FFT_SIZE; ++i) {
+                            input[i] = processingBuffer[i] * (0.5 - 0.5 * cos(2.0 * M_PI * i / (FFT_SIZE - 1)));
+                        }
+                        dataReady = false;
+                        doWork = true;
                     }
                 }
 
-                double trueIndex = peakIndex + p;
-                double freq = trueIndex * (double)SAMPLE_RATE / FFT_SIZE;
+                if (doWork) {
+                    fftw_execute(plan);
+                    int peakIndex = get_fundamental_hps(output, FFT_SIZE, 3);
+                    if (peakIndex <= 0) peakIndex = 1;
+                    if (peakIndex >= (FFT_SIZE / 2)) peakIndex = (FFT_SIZE / 2) - 1;
 
-                if (freq < 20 || freq > 1500) {
-                    g_ready = false;
-                    continue;
+                    auto mag = [&](int i) {
+                        return sqrt(output[i][0] * output[i][0] + output[i][1] * output[i][1]);
+                    };
+
+                    double alpha = mag(peakIndex - 1);
+                    double beta = mag(peakIndex);
+                    double gamma = mag(peakIndex + 1);
+
+                    double p = 0.0;
+                    double denominator = (alpha - 2 * beta + gamma);
+                    if (denominator == 0 || isnan(denominator) || isinf(denominator)) {
+                        p = 0;
+                    } else {
+                        p = 0.5 * (alpha - gamma) / denominator;
+                        if (p < -0.5 || p > 0.5) p = 0;
+                    }
+
+                    double trueIndex = peakIndex + p;
+                    double freq = trueIndex * (double)SAMPLE_RATE / FFT_SIZE;
+
+                    if (freq >= 20 && freq <= 1500) {
+                        CURRENTNOTE = frequency_to_note(freq);
+                    }
                 }
-
-                CURRENTNOTE = frequency_to_note(freq);
-                g_ready = false;
+                this_thread::sleep_for(chrono::milliseconds(1));
             }
+            fftw_destroy_plan(plan);
+        });
+        audioWorker.detach();
+
+        while (RUNNINGPROGRAM) {
+            this_thread::sleep_for(chrono::milliseconds(50));
         }
 
-        fftw_destroy_plan(plan);
         ma_device_uninit(&device);
 
     } catch (const exception& e) {
