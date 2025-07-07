@@ -2,8 +2,8 @@
 <h2 align="center">And so, I present to you, the Flashcard App</h2>
 <h6 align="center">(For Lack of a Better Name)</h6>
 
-**DISCLAIMER:**
-This project is still very much in its Alpha stages.
+<p align="center" style="bold">**DISCLAIMER:**</p>
+<p align="center">This project is still very much in its Alpha stages.</p>
 
 <h2 align="center">Audio Detection</h2>
 I'm using FFTW 3 as my FFT library, and am applying a number of algorithms to the data I get from the FFT function; namely a Hanning Window, a Harmonic Product Spectrum, and a Parabolic Product Spectrum.</br>
