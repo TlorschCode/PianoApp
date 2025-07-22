@@ -1,3 +1,5 @@
+// TODO: Add volume slider
+
 //| INIT
 #include <string>
 #include <atomic>
@@ -37,10 +39,13 @@ int naturalXOffset = -20;
 int naturalYOfffset = 45;
 int ledgerXOffset = 28;
 int noteYOffset = 45;
+// Timers and frames
 int newNoteTimer = 0;
+int checkNoteTimer = 0;
 int TIMER = 0;
 const int FRAMERATE = 60;
-const int FRAME(1000 / FRAMERATE);
+// const int FRAME = floor(1000 / FRAMERATE);
+const int FRAME = 16;
 
 //| Template variables
 Texture2D grandStaffTexture;
@@ -105,23 +110,29 @@ void wait(int time) {
     std::this_thread::sleep_for(std::chrono::milliseconds(time));
 }
 
-// Changes timers and wait 1/60th of a second
+// Changes timers and wait 1/60th of a second.
 void tick() {
     wait(FRAME);
     TIMER += 1;
     TIMER = TIMER == 60 ? 0 : TIMER;
     newNoteTimer -= 1;
     newNoteTimer = newNoteTimer == -1 ? 0 : newNoteTimer;
+    checkNoteTimer -= 1;
+    checkNoteTimer = checkNoteTimer == -1 ? 0 : checkNoteTimer;
 }
+
+// Quality of life function to display text.
+// Allows for custom font size.
 void displayText(const char *text, float x, float y, float fontSize, Color color) {
     DrawTextEx(roboto, text, {x, y}, fontSize, 2, color);
 }
 
+// Quality of life function to display text.
 void displayText(const char *text, float x, float y, Color color) {
     DrawTextEx(roboto, text, {x, y}, 30, 2, color);
 }
 
-// Draws grand staff more easily
+// Quality of life function to draw the Grand Staff.
 void drawStaff(Texture2D txtr) {
     DrawTexture(
         txtr,
@@ -132,7 +143,7 @@ void drawStaff(Texture2D txtr) {
 }
 
 // Displays whichever note is passed into it.
-// The tint of the textures is changeable, but defaults to White
+// The tint of the textures is changeable, but defaults to White.
 void drawNote(string useNote, Color tint = WHITE) {
     // 40.9 pixels between each line
     // 495 is the bottom line for Treble Clef, or E4
@@ -206,9 +217,15 @@ void drawNote(string useNote, Color tint = WHITE) {
     }
 }
 
+// Checks whether the correct note is being played.
+// Handles new target note logic and renders the target note on the screen.
 void checkNote(string *correctNote) {
     if (CURRENTNOTE == *correctNote) {
-        newNoteTimer = 30;
+        if (checkNoteTimer == 1) {
+            newNoteTimer = 15;
+        } else if (checkNoteTimer == 0) {
+            checkNoteTimer = 6;
+        }
     }
     if (newNoteTimer > 0) {
         drawNote(*correctNote);

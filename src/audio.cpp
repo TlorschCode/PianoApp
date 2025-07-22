@@ -115,7 +115,6 @@ void InitAudio() {
 
             while (RUNNINGPROGRAM) {
                 bool doWork = false;
-
                 {
                     lock_guard<mutex> lock(bufferMutex);
                     if (dataReady) {
@@ -126,7 +125,6 @@ void InitAudio() {
                         doWork = true;
                     }
                 }
-
                 if (doWork) {
                     fftw_execute(plan);
                     int peakIndex = get_fundamental_hps(output, FFT_SIZE, 3);
@@ -154,13 +152,20 @@ void InitAudio() {
                     double freq = trueIndex * (double)SAMPLE_RATE / FFT_SIZE;
 
                     if (freq >= 20 && freq <= 1500) {
-                        CURRENTNOTE = frequency_to_note(freq);
+                        double peakMag = beta;  // magnitude at peak frequency bin
+
+                        if (peakMag >= VOLUMETHRESHOLD) {
+                            CURRENTNOTE = frequency_to_note(freq);
+                        } else {
+                            CURRENTNOTE = "???";  // ignore too quiet sounds
+                        }
                     }
                 }
                 this_thread::sleep_for(chrono::milliseconds(1));
             }
             fftw_destroy_plan(plan);
         });
+
         audioWorker.detach();
 
         while (RUNNINGPROGRAM) {
