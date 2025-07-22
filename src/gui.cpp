@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <chrono>
 #include <thread>
+#include <random>
 
 #include "../lib/raylib/include/raylib.h"
 #include "globals.h"
@@ -13,6 +14,9 @@ using namespace std;
 
 const float WINWIDTH = 1920;
 const float WINHEIGHT = 1080;
+
+static random_device rd;  // seed
+static mt19937 gen(rd()); // random number generator
 
 //| Global Variables
 // For note detection
@@ -57,6 +61,11 @@ Color sharpCircleCol = GRAY;
 Color flatCircleCol = GRAY;
 
 //| FUNCTIONS
+inline int randint(int min, int max) {
+    std::uniform_int_distribution<> dist(min, max);
+    return dist(gen);
+}
+
 void loadAssets() {
     roboto = LoadFontEx("assets/Roboto-Black.ttf", 128, NULL, 0);
 
@@ -199,8 +208,32 @@ void drawNote(string useNote, Color tint = WHITE) {
 
 void checkNote(string *correctNote) {
     if (CURRENTNOTE == *correctNote) {
-        drawNote(*correctNote);
         newNoteTimer = 30;
+    }
+    if (newNoteTimer > 0) {
+        drawNote(*correctNote);
+    }
+    if (newNoteTimer == 1) {
+        if (randint(0, 1)) {
+            if (randint(0, 1)) {
+                *correctNote = trebleLines[(randint(0, sizeTrebleLines - 1))];
+            } else {
+                *correctNote = trebleSpaces[(randint(0, sizeTrebleSpaces - 1))];
+            }
+        } else {
+            if (randint(0, 1)) {
+                *correctNote = baseSpaces[(randint(0, sizeBaseSpaces - 1))];
+            } else {
+                *correctNote = baseLines[(randint(0, sizeBaseLines - 1))];
+            }
+        }
+        if (randint(0, 1)) {
+            if (SHARPS) {
+                *correctNote = (*correctNote).substr(0,1) + "#" + (*correctNote).substr(1,1);
+            } else {
+                *correctNote = (*correctNote).substr(0,1) + "b" + (*correctNote).substr(1,1);
+            }
+        }
     }
 }
 
@@ -249,7 +282,7 @@ void drawSharpToggle(float x, float y, char hoveredButton, Color *sharpCol, Colo
     displayText("b", x - 6, y + 24, BLACK);
 }
 
-void mouseLogic(char hoveredBtn, Vector2 toggleBtnLoc) {
+void mouseLogic(char hoveredBtn, Vector2 toggleBtnLoc, string correctNote) {
     Vector2 mouse = GetMousePosition();
     if (CheckCollisionPointCircle(mouse, toggleBtnLoc, 20)) {
         hoveredBtn = '#';
@@ -259,6 +292,15 @@ void mouseLogic(char hoveredBtn, Vector2 toggleBtnLoc) {
         hoveredBtn = 'X';
     }
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        cout << correctNote << "\n"; //? DEBUG
+        if (CheckCollisionPointCircle(mouse, toggleBtnLoc, 20)) {
+            SHARPS = true;
+        } else if (CheckCollisionPointCircle(mouse, {toggleBtnLoc.x, toggleBtnLoc.y + 40}, 20)) {
+            SHARPS = false;
+        }
+    }
+    if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
+        cout << CURRENTNOTE << "\n"; //? DEBUG
         if (CheckCollisionPointCircle(mouse, toggleBtnLoc, 20)) {
             SHARPS = true;
         } else if (CheckCollisionPointCircle(mouse, {toggleBtnLoc.x, toggleBtnLoc.y + 40}, 20)) {
@@ -277,15 +319,16 @@ void RunGUI() {
     Vector2 toggleLoc = {WINWIDTH - 100, 100};
     char hovered = 'X';
     newNoteTimer = 0;
-    string correctNote = "F3";
+    string correctNote = "F#3";
 
     while (!WindowShouldClose()) {
-        mouseLogic(hovered, toggleLoc);
+        mouseLogic(hovered, toggleLoc, correctNote);
         BeginDrawing();
         ClearBackground(RAYWHITE);
         checkNote(&correctNote);
         drawStaff(grandStaffTexture);
         drawNote(CURRENTNOTE, Transparent);
+        drawNote(correctNote, Color {255, 255, 255, 75});
         drawSharpToggle(WINWIDTH - 100, 100, hovered, &sharpCircleCol, &flatCircleCol);
 
         DrawTextEx(roboto, CURRENTNOTE.c_str(), {100, 100}, 40, 2, DARKGRAY);
