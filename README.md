@@ -4,7 +4,7 @@
 
 </br>
 <h3 align="center"><b>DISCLAIMER</b></h3>
-<p align="center">This project is still very much in its Alpha stages.</p></br>
+<p align="center">This project is still very much in its Beta stages.</p></br>
 
 <h2 align="center">How to Use</h2>
 Download and run the installer from the lastest release.</br>
