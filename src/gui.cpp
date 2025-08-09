@@ -8,6 +8,8 @@
 #include <chrono>
 #include <thread>
 #include <random>
+#include <vector>
+#include <optional>
 
 #include "../lib/raylib/include/raylib.h"
 #include "globals.h"
@@ -20,12 +22,21 @@ const float WINHEIGHT = 1080;
 static random_device rd;  // seed
 static mt19937 gen(rd()); // random number generator
 
+//| Template functions
+void mouseLogic(char hoveredBtn, Vector2 toggleBtnLoc, string correctNote); 
+void drawNote(string useNote, Color tint);
+template <typename T> inline optional<unsigned int> indexOf(const T& itm, const vector<T>& vec);
+template <typename T, size_t N> inline optional<unsigned int> indexOf(const T& itm, const T (&arr)[N]);
+template <typename T, size_t N> inline constexpr size_t arraySize(T (&)[N]);
+
 //| Global Variables
 // For note detection
 string trebleLines[6] = {"C4", "E4", "G4", "B4", "D5", "F5"};
 string trebleSpaces[6] = {"D4", "F4", "A4", "C5", "E5", "G5"};
 string baseLines[5] = {"G2", "B2", "D3", "F3", "A3"};
 string baseSpaces[6] = {"F2", "A2", "C3", "E3", "G3", "B3"};
+string sharpNotes[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+string flatNotes[12] = {"C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"};
 int sizeTrebleLines = sizeof(trebleLines) / sizeof(trebleLines[0]);
 int sizeTrebleSpaces = sizeof(trebleSpaces) / sizeof(trebleSpaces[0]);
 int sizeBaseLines = sizeof(baseLines) / sizeof(baseLines[0]);
@@ -56,16 +67,48 @@ Texture2D noteTexture;
 Texture2D ledgerTexture;
 Font roboto;
 
-//| Template functions
-void mouseLogic(char hoveredBtn, Vector2 toggleBtnLoc); 
-void drawNote(string useNote, Color tint);
-
 //| Colors
 Color Transparent = {255, 255, 255, 127};
 Color sharpCircleCol = GRAY;
 Color flatCircleCol = GRAY;
 
-//| FUNCTIONS
+//| FUNCTIONS 
+// Returns which index itm is found at
+// Returns nullopt if no index was found
+//
+// itm -> item to search for
+// vec -> std::vector to search through
+template <typename T>
+inline optional<unsigned int> indexOf(const T& itm, const vector<T>& vec) {
+    auto it = find(vec.begin(), vec.end(), itm);
+    if (it != vec.end()) {
+        return static_cast<unsigned int>(it - vec.begin());
+    } else {
+        return nullopt; // Not found
+    }
+}
+
+// Returns which index the item is found at
+// Returns nullopt if no index was found
+//
+// itm -> item to search for
+// arr -> C-style array to search through
+template <typename T, size_t N>
+std::optional<unsigned int> indexOf(const T& itm, const T (&arr)[N]) {
+    auto it = std::find(arr, arr + N, itm);
+    if (it != arr + N) {
+        return static_cast<unsigned int>(it - arr);
+    }
+    else {
+        return nullopt;
+    }
+}
+
+template <typename T, size_t N>
+constexpr size_t arraySize(T (&)[N]) {
+    return N;
+}
+
 inline int randint(int min, int max) {
     std::uniform_int_distribution<> dist(min, max);
     return dist(gen);
@@ -155,24 +198,16 @@ void drawNote(string useNote, Color tint = WHITE) {
     string note = (useNote.length() == 3) ? (useNote.substr(0, 1) + useNote.back()) : useNote;
     char accidental = (useNote.length() == 3) ? useNote.at(1) : '\0';
     int octave = useNote.back() - '0';
-    bool isTrebleLine = find(begin(trebleLines), end(trebleLines), note) != end(trebleLines);
-    bool isTrebleSpace = find(begin(trebleSpaces), end(trebleSpaces), note) != end(trebleSpaces);
+    bool isTrebleLine = indexOf(note, trebleLines) != nullopt;
+    bool isTrebleSpace = indexOf(note, trebleSpaces) != nullopt;
     bool isTreble = isTrebleLine || isTrebleSpace;
-    bool isBaseLine = find(begin(baseLines), end(baseLines), note) != end(baseLines);
-    bool isBaseSpace = find(begin(baseSpaces), end(baseSpaces), note) != end(baseSpaces);
+    bool isBaseLine = indexOf(note, baseLines) != nullopt;
+    bool isBaseSpace = indexOf(note, baseSpaces) != nullopt;
     bool isBase = isBaseLine || isBaseSpace;
 
     //# Note Rendering
     if (isTreble) {
-        if (isTrebleLine) {
-            auto search = find(trebleLines, trebleLines + sizeTrebleLines, note);
-            int index = search - trebleLines;
-            y = 535 - (noteStep * index);
-        } else {
-            auto search = find(trebleSpaces, trebleSpaces + sizeTrebleSpaces, note);
-            int index = search - trebleSpaces;
-            y = 515 - (noteStep * index);
-        }
+        y = isTrebleLine ? 535 - (noteStep * indexOf(note, trebleLines).value_or(-1)) : 515 - (noteStep * indexOf(note, trebleSpaces).value_or(-1));
         if (note == "C4") {
             DrawTexture(ledgerTexture, x + ledgerXOffset, y - (ledgerTexture.height / 2), tint);
         }
@@ -191,15 +226,7 @@ void drawNote(string useNote, Color tint = WHITE) {
             }
         }
     } else if (isBase) {  //# Base Clef
-        if (isBaseLine) {
-            auto search = find(baseLines, baseLines + sizeBaseLines, note);
-            int index = search - baseLines;
-            y = 785 - (noteStep * index);
-        } else {
-            auto search = find(baseSpaces, baseSpaces + sizeBaseSpaces, note);
-            int index = search - baseSpaces;
-            y = 805 - (noteStep * index);
-        }
+        y = isBaseLine ? 785 - (noteStep * indexOf(note, baseLines).value_or(-1)) :  805 - (noteStep * indexOf(note, baseSpaces).value_or(-1));
         DrawTexture(noteTexture, x, y - ((noteTexture.height / 2) + noteYOffset), tint);
         if (accidental != '\0') {
             switch (accidental) {
@@ -220,6 +247,26 @@ void drawNote(string useNote, Color tint = WHITE) {
 // Checks whether the correct note is being played.
 // Handles new target note logic and renders the target note on the screen.
 void checkNote(string *correctNote) {
+    char octave = (*correctNote).back();
+    char accidental = (*correctNote).length() == 3 ? (*correctNote).at(1) : '\0';
+    string note = (*correctNote).substr(0, 1);
+    if (SHARPS) {
+        if (accidental == 'b') {
+            cout << "  DEBUG:  " << note + accidental << "\n";
+            int index = indexOf((note + accidental), flatNotes).value_or(-1);
+            cout << "  DEBUG:  " << index << "\n";
+            cout << "  DEBUG:  " << sharpNotes[index] << "\n";
+            *correctNote = sharpNotes[index] + octave;
+        }
+    } else {
+        if (accidental == '#') {
+            cout << "  DEBUG:  " << note + accidental << "\n";
+            int index = indexOf((note + accidental), sharpNotes).value_or(-1);
+            cout << "  DEBUG:  " << index << "\n";
+            cout << "  DEBUG:  " << flatNotes[index];
+            *correctNote = flatNotes[index] + octave;
+        }
+    }
     if (CURRENTNOTE == *correctNote) {
         if (checkNoteTimer == 1) {
             newNoteTimer = 15;
