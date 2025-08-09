@@ -7,7 +7,7 @@
 <p align="center">This project is still very much in its Alpha stages.</p></br>
 
 <h2 align="center">How to Use</h2>
-Run the "run.bat" file, ignore any pop ups that warn about potential malware, they are just there because if the .bat file did contain malware, Windows couldn't do anything to stop it until too late, so it warns you before hand.</br>
+Download and run the installer from the lastest release.</br>
 Make sure your mic isn't muted, full volume is best, actually. If you own a piano, play any key between G2 (second G on the piano) and G5 (fifth G on the piano). If you don't own a piano, you could try singing one of those notes, or play something from your phone.</br>
 <b>NOTE</b></br>
 The app isn't very performant or accurate (for very long at least), but that is because it is intended to listen for a target frequency that it chooses, not display whatever it hears. For example, it could display B#3 (third B#), and the user would have to play the key on the piano; the app is meant to be a digital flashcard program.</br>
