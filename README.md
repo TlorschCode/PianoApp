@@ -12,7 +12,7 @@ Make sure your mic isn't muted, full microphone volume is best, actually.</br>
 The app will display a note, if you play that note successfully it will change the target note to a different note. The app only supports notes G2-G5 right now.</br>
 If you don't own a piano, you could try singing the note, or playing something from your phone.</br>
 
-<hr>
+</br><hr></br>
 
 <h2 align="center">Audio Detection</h2>
 I'm using FFTW 3 as my FFT library, and am applying a number of algorithms to the data I get from the FFT function; namely a Hanning Window, a Harmonic Product Spectrum, and a Parabolic Product Spectrum.</br>
