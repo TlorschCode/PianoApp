@@ -4,7 +4,7 @@
 [Setup]
 AppName=Flashcard App
 AppVersion=1.0
-DefaultDirName={pf}\Flashcard App
+DefaultDirName={commonpf}\Flashcard App
 DefaultGroupName=Flashcard App
 OutputBaseFilename=FlashcardAppInstaller
 Compression=lzma
