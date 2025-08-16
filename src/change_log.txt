@@ -1,0 +1,5 @@
+BUG FIXES:
+Program will no longer display impossible notes (e.g. B#)
+
+CHANGES:
+Added a Button class to replace the old legacy version which used multiple vectors to store data.

@@ -10,6 +10,7 @@
 #include <random>
 #include <vector>
 #include <optional>
+#include <cctype>
 
 #include "../lib/raylib/include/raylib.h"
 #include "globals.h"
@@ -22,7 +23,78 @@ const float WINHEIGHT = 1080;
 static random_device rd;  // seed
 static mt19937 gen(rd()); // random number generator
 
+//| ENUMERATORS
+enum ButtonType {SQUARE, CIRCLE};
+enum ButtonGroup {DEFAULT, SETTINGS};
+
+//| CLASSES
+class Button {
+    private:
+        float ocapacity = 255;
+        Color color = {255, 255, 255, 255};
+    public:
+        string name;
+        Vector2 pos;
+        float size;
+        ButtonType type;
+        Texture2D texture;
+        ButtonGroup group;
+        bool shown;
+        Rectangle rect = {0, 0, 0, 0};
+        Button(string btn_name, Vector2 btn_pos, float btn_size, ButtonType btn_type, Texture2D btn_texture, ButtonGroup btn_group = DEFAULT, bool btn_shown = true) {
+            name = btn_name;
+            pos = btn_pos;
+            size = btn_size;
+            type = btn_type;
+            texture = btn_texture;
+            group = btn_group;
+            shown = btn_shown;
+            if (type == SQUARE) {
+                rect = {pos.x - (size / 2), pos.y - (size / 2), size, size};
+            }
+        }
+        void setOcapacity(float target_amnt) {
+            ocapacity = target_amnt;
+            color = {255, 255, 255, static_cast<unsigned char>(ocapacity)};
+        }
+        void render() {
+            if (shown) {
+                DrawTexture(texture, pos.x - (size), pos.y - (size), color);
+            }
+        }
+        inline bool isHovered(Vector2 mouse_pos) {
+            if (type == CIRCLE) {
+                return CheckCollisionPointCircle(mouse_pos, pos, size);
+            } else {
+                return CheckCollisionPointRec(mouse_pos, rect);
+            }
+        }
+        inline bool isLeftClicked(Vector2 mouse_pos) {
+            return isHovered(mouse_pos) && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        }
+        inline bool isRightClicked(Vector2 mouse_pos) {
+            return isHovered(mouse_pos) && IsMouseButtonDown(MOUSE_BUTTON_RIGHT);
+        }
+        void hide() {
+            shown = false;
+        }
+        void show() {
+            shown = true;
+        }
+        void toggle() {
+            shown = !shown;
+        }
+};
+
 //| Template functions
+// Adds button info to associated lists
+// PARAMETERS
+// buttonName is a string by which the button will be identified with.
+// buttonLocation is where the button is positioned.
+// buttonSize is the size of the hitbox of the button.
+// buttonType is a string that can either be "circle" or "square" which determines the shape of the hitbox.
+void addButton(string buttonName, Vector2 buttonLocation, float buttonSize, string buttonType, Texture2D buttonTexture);
+inline string to_lowercase(const string &str);
 void mouseLogic(char hoveredBtn, Vector2 toggleBtnLoc, string correctNote); 
 void drawNote(string useNote, Color tint);
 template <typename T> inline optional<unsigned int> indexOf(const T& itm, const vector<T>& vec);
@@ -31,6 +103,7 @@ template <typename T, size_t N> inline constexpr size_t arraySize(T (&)[N]);
 
 //| Global Variables
 // For note detection
+vector<Button> buttons = {};
 string trebleLines[6] = {"C4", "E4", "G4", "B4", "D5", "F5"};
 string trebleSpaces[6] = {"D4", "F4", "A4", "C5", "E5", "G5"};
 string baseLines[5] = {"G2", "B2", "D3", "F3", "A3"};
@@ -65,6 +138,7 @@ Texture2D flatTexture;
 Texture2D naturalTexture;
 Texture2D noteTexture;
 Texture2D ledgerTexture;
+Texture2D settingsTexture;
 Font roboto;
 
 //| Colors
@@ -114,6 +188,7 @@ inline int randint(int min, int max) {
     return dist(gen);
 }
 
+// Loads assets
 void loadAssets() {
     roboto = LoadFontEx("assets/Roboto-Black.ttf", 128, NULL, 0);
 
@@ -145,6 +220,11 @@ void loadAssets() {
     tempImage = LoadImage("assets/LedgerLine.png");
     ImageResize(&tempImage, tempImage.width / 2.5, tempImage.height / 2);
     ledgerTexture = LoadTextureFromImage(tempImage);
+    UnloadImage(tempImage);
+
+    tempImage = LoadImage("assets/SettingsIcon.png");
+    ImageResize(&tempImage, tempImage.width / 5, tempImage.height / 5);
+    settingsTexture = LoadTextureFromImage(tempImage);
     UnloadImage(tempImage);
 }
 
@@ -197,7 +277,6 @@ void drawNote(string useNote, Color tint = WHITE) {
 
     string note = (useNote.length() == 3) ? (useNote.substr(0, 1) + useNote.back()) : useNote;
     char accidental = (useNote.length() == 3) ? useNote.at(1) : '\0';
-    int octave = useNote.back() - '0';
     bool isTrebleLine = indexOf(note, trebleLines) != nullopt;
     bool isTrebleSpace = indexOf(note, trebleSpaces) != nullopt;
     bool isTreble = isTrebleLine || isTrebleSpace;
@@ -271,7 +350,7 @@ void checkNote(string *correctNote) {
         if (checkNoteTimer == 1) {
             newNoteTimer = 15;
         } else if (checkNoteTimer == 0) {
-            checkNoteTimer = 6;
+            checkNoteTimer = 6; // Makes sure the current note stays for a second after reaching it.
         }
     }
     if (newNoteTimer > 0) {
@@ -293,82 +372,64 @@ void checkNote(string *correctNote) {
         }
         if (randint(0, 1)) {
             if (SHARPS) {
-                *correctNote = (*correctNote).substr(0,1) + "#" + (*correctNote).substr(1,1);
+                if ((*correctNote).substr(0,1) == "E" ) {
+                    *correctNote = "F" + (*correctNote).substr(1,1);
+                } else if ((*correctNote).substr(0,1) == "B") {
+                    *correctNote = "C" + (*correctNote).substr(1,1);
+                } else {
+                    *correctNote = (*correctNote).substr(0,1) + "#" + (*correctNote).substr(1,1);
+                }
             } else {
-                *correctNote = (*correctNote).substr(0,1) + "b" + (*correctNote).substr(1,1);
+                if ((*correctNote).substr(0,1) == "F" ) {
+                    *correctNote = "E" + (*correctNote).substr(1,1);
+                } else if ((*correctNote).substr(0,1) == "C") {
+                    *correctNote = "B" + (*correctNote).substr(1,1);
+                } else {
+                    *correctNote = (*correctNote).substr(0,1) + "b" + (*correctNote).substr(1,1);
+                }
             }
         }
     }
 }
 
-void drawSharpToggle(float x, float y, char hoveredButton, Color *sharpCol, Color *flatCol) {
-    Color colorHoverGray = {150, 150, 150, 255};
-    float hoverGray = 150.0f;
-    DrawRectangle(x - 20, y, 40, 40, GRAY);
-    DrawCircle(x, y, 20, GRAY);
-    DrawCircle(x, y + 40, 20, GRAY);
-
-    float mainSharpCol = (float)(sharpCol->r);
-    float mainFlatCol = (float)(flatCol->r);
-    Color betweenSharpCol = *sharpCol;
-    Color betweenFlatCol = *flatCol;
-    float interpolationSpeed = 0.3;
-    if (hoveredButton == '#') {
-        unsigned char newCol = (unsigned char)(mainSharpCol + ((hoverGray - mainSharpCol) * interpolationSpeed));
-        betweenSharpCol = {newCol, newCol, newCol, 255};
-        *sharpCol = betweenSharpCol;
-        newCol = (unsigned char)(mainFlatCol + ((GRAY.r - mainFlatCol) * interpolationSpeed));
-        betweenFlatCol = {newCol, newCol, newCol, 255};
-        *flatCol = betweenFlatCol;
-    } else if (hoveredButton == 'b') {
-        unsigned char newCol = (unsigned char)(mainFlatCol + ((hoverGray - mainFlatCol) * interpolationSpeed));
-        betweenFlatCol = {newCol, newCol, newCol, 255};
-        *flatCol = betweenFlatCol;
-        newCol = (unsigned char)(mainSharpCol + ((GRAY.r - mainSharpCol) * interpolationSpeed));
-        betweenSharpCol = {newCol, newCol, newCol, 255};
-        *sharpCol = betweenSharpCol;
-    } else {
-        unsigned char newCol = (unsigned char)(mainSharpCol + ((GRAY.r - mainSharpCol) * interpolationSpeed));
-        betweenSharpCol = {newCol, newCol, newCol, 255};
-        *sharpCol = betweenSharpCol;
-        newCol = (unsigned char)(mainFlatCol + ((GRAY.r - mainFlatCol) * interpolationSpeed));
-        betweenFlatCol = {newCol, newCol, newCol, 255};
-        *flatCol = betweenFlatCol;
+void drawButtons() {
+    for (auto& button : buttons) {
+        button.render();
     }
-    DrawCircle(x, y, 18, betweenSharpCol);
-    DrawCircle(x, y + 39, 18, betweenFlatCol);
-    if (SHARPS) {
-        DrawRing({x, y}, 15, 18, 0, 360, 360, DARKGRAY);
-    } else {
-        DrawRing({x, y + 40}, 15, 18, 0, 360, 360, DARKGRAY);
-    }
-    displayText("#", x - 6, y - 14, BLACK);
-    displayText("b", x - 6, y + 24, BLACK);
 }
 
-void mouseLogic(char hoveredBtn, Vector2 toggleBtnLoc, string correctNote) {
+bool mouseLogic(string *hovered) {
+    *hovered = "X";
     Vector2 mouse = GetMousePosition();
-    if (CheckCollisionPointCircle(mouse, toggleBtnLoc, 20)) {
-        hoveredBtn = '#';
-    } else if (CheckCollisionPointCircle(mouse, {toggleBtnLoc.x, toggleBtnLoc.y + 40}, 20)) {
-        hoveredBtn = 'b';
-    } else {
-        hoveredBtn = 'X';
-    }
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-        cout << correctNote << "\n"; //? DEBUG
-        if (CheckCollisionPointCircle(mouse, toggleBtnLoc, 20)) {
-            SHARPS = true;
-        } else if (CheckCollisionPointCircle(mouse, {toggleBtnLoc.x, toggleBtnLoc.y + 40}, 20)) {
-            SHARPS = false;
+    for (auto& button : buttons) {
+        if (button.isHovered(mouse)) {
+            *hovered = button.name;
+        }
+        if (button.isLeftClicked(mouse)) {
+            return true;
         }
     }
-    if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
-        cout << CURRENTNOTE << "\n"; //? DEBUG
-        if (CheckCollisionPointCircle(mouse, toggleBtnLoc, 20)) {
-            SHARPS = true;
-        } else if (CheckCollisionPointCircle(mouse, {toggleBtnLoc.x, toggleBtnLoc.y + 40}, 20)) {
-            SHARPS = false;
+    return false;
+}
+
+void showSettings(bool show = true) {
+    for (auto& button : buttons) {
+        if (button.group == SETTINGS) {
+            if (show) {
+                button.show();
+            } else {
+                button.hide();
+            }
+        }
+    }
+}
+
+void buttonLogic(bool clicked, string hovered_btn) {
+    if (clicked) {
+        if (hovered_btn == "settings") {
+            showSettings();
+        } else if (hovered_btn == "do_sharps") {
+            showSettings(false);
         }
     }
 }
@@ -380,20 +441,25 @@ void RunGUI() {
     SetTextLineSpacing(16);
     loadAssets();
 
-    Vector2 toggleLoc = {WINWIDTH - 100, 100};
-    char hovered = 'X';
+    Button settings_button("settings", Vector2({WINWIDTH - 50, 45}), 50, CIRCLE, settingsTexture);
+    buttons.push_back(settings_button);
+    // TODO: Make this an actual button, not just a texture of a flat.
+    Button sharp_button("do_sharps", Vector2({WINWIDTH - 500, 90}), 50, CIRCLE, flatTexture, SETTINGS, false);
+    buttons.push_back(sharp_button);
+
+    string hoveredBtn = "X";
     newNoteTimer = 0;
     string correctNote = "F#3";
+    bool was_clicked = false;
 
     while (!WindowShouldClose()) {
-        mouseLogic(hovered, toggleLoc, correctNote);
-        BeginDrawing();
+        buttonLogic(mouseLogic(&hoveredBtn), hoveredBtn);
         ClearBackground(RAYWHITE);
+        drawButtons();
         checkNote(&correctNote);
         drawStaff(grandStaffTexture);
         drawNote(CURRENTNOTE, Transparent);
         drawNote(correctNote, Color {255, 255, 255, 75});
-        drawSharpToggle(WINWIDTH - 100, 100, hovered, &sharpCircleCol, &flatCircleCol);
 
         DrawTextEx(roboto, CURRENTNOTE.c_str(), {100, 100}, 40, 2, DARKGRAY);
         EndDrawing();
@@ -404,6 +470,8 @@ void RunGUI() {
     UnloadTexture(flatTexture);
     UnloadTexture(naturalTexture);
     UnloadTexture(noteTexture);
+    UnloadTexture(ledgerTexture);
+    UnloadTexture(settingsTexture);
     UnloadFont(roboto);
     RUNNINGPROGRAM = false;
     CloseWindow();
