@@ -26,65 +26,7 @@ static mt19937 gen(rd()); // random number generator
 //| ENUMERATORS
 enum ButtonType {SQUARE, CIRCLE};
 enum ButtonGroup {DEFAULT, SETTINGS};
-
-//| CLASSES
-class Button {
-    private:
-        float ocapacity = 255;
-        Color color = {255, 255, 255, 255};
-    public:
-        string name;
-        Vector2 pos;
-        float size;
-        ButtonType type;
-        Texture2D texture;
-        ButtonGroup group;
-        bool shown;
-        Rectangle rect = {0, 0, 0, 0};
-        Button(string btn_name, Vector2 btn_pos, float btn_size, ButtonType btn_type, Texture2D btn_texture, ButtonGroup btn_group = DEFAULT, bool btn_shown = true) {
-            name = btn_name;
-            pos = btn_pos;
-            size = btn_size;
-            type = btn_type;
-            texture = btn_texture;
-            group = btn_group;
-            shown = btn_shown;
-            if (type == SQUARE) {
-                rect = {pos.x - (size / 2), pos.y - (size / 2), size, size};
-            }
-        }
-        void setOcapacity(float target_amnt) {
-            ocapacity = target_amnt;
-            color = {255, 255, 255, static_cast<unsigned char>(ocapacity)};
-        }
-        void render() {
-            if (shown) {
-                DrawTexture(texture, pos.x - (size), pos.y - (size), color);
-            }
-        }
-        inline bool isHovered(Vector2 mouse_pos) {
-            if (type == CIRCLE) {
-                return CheckCollisionPointCircle(mouse_pos, pos, size);
-            } else {
-                return CheckCollisionPointRec(mouse_pos, rect);
-            }
-        }
-        inline bool isLeftClicked(Vector2 mouse_pos) {
-            return isHovered(mouse_pos) && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-        }
-        inline bool isRightClicked(Vector2 mouse_pos) {
-            return isHovered(mouse_pos) && IsMouseButtonDown(MOUSE_BUTTON_RIGHT);
-        }
-        void hide() {
-            shown = false;
-        }
-        void show() {
-            shown = true;
-        }
-        void toggle() {
-            shown = !shown;
-        }
-};
+enum MenuState {FLASHCARD_MENU, SETTINGS_MENU};
 
 //| Template functions
 // Adds button info to associated lists
@@ -100,6 +42,82 @@ void drawNote(string useNote, Color tint);
 template <typename T> inline optional<unsigned int> indexOf(const T& itm, const vector<T>& vec);
 template <typename T, size_t N> inline optional<unsigned int> indexOf(const T& itm, const T (&arr)[N]);
 template <typename T, size_t N> inline constexpr size_t arraySize(T (&)[N]);
+template <typename T> inline bool containsVal(const T& itm, const vector<T>& vec);
+
+//| CLASSES
+class Button {
+    private:
+        float ocapacity = 255;
+        Color color = {255, 255, 255, 255};
+        Rectangle rect = {0, 0, 0, 0};
+        Color selection_color = {100, 100, 100, 255};
+    public:
+        string name;
+        Vector2 pos;
+        float size;
+        ButtonType type;
+        Texture2D texture;
+        vector<MenuState> available_states;
+        bool shown = true;
+        bool selected = false;
+        Button(string btn_name, Vector2 btn_pos, float btn_size, ButtonType btn_type, Texture2D btn_texture, vector<MenuState> btn_available_states) {
+            name = btn_name;
+            pos = btn_pos;
+            size = btn_size;
+            type = btn_type;
+            texture = btn_texture;
+            available_states = btn_available_states;
+            selected = false;
+            if (type == SQUARE) {
+                rect = {pos.x - (size / 2), pos.y - (size / 2), size, size};
+            }
+        }
+        void SetOcapacity(float target_amnt) {
+            ocapacity = target_amnt;
+            color = {255, 255, 255, static_cast<unsigned char>(ocapacity)};
+        }
+        void AvailableVisibility(MenuState menu_state) {
+            shown = containsVal(menu_state, available_states);
+        }
+        void Render() {
+            if (shown) {
+                DrawTexture(texture, pos.x - (size), pos.y - (size), color);
+                if (selected) {
+                    if (type == CIRCLE) {
+                        DrawCircle(pos.x, pos.y, size + (size * 0.3), selection_color);
+                    }
+                }
+            }
+        }
+        inline bool IsHovered(Vector2 mouse_pos) {
+            if (type == CIRCLE) {
+                return CheckCollisionPointCircle(mouse_pos, pos, size) && shown;
+            } else {
+                return CheckCollisionPointRec(mouse_pos, rect) && shown;
+            }
+        }
+        inline bool IsLeftClicked(Vector2 mouse_pos) {
+            return IsHovered(mouse_pos) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+        }
+        inline bool IsRightClicked(Vector2 mouse_pos) {
+            return IsHovered(mouse_pos) && IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
+        }
+        void ToggleSelection() {
+            selected = !selected;
+        }
+        void Hide() {
+            shown = false;
+        }
+        void Show() {
+            shown = true;
+        }
+        void ToggleVisibility() {
+            shown = !shown;
+        }
+        void SetSelectionColor(Color slct_color) {
+            selection_color = slct_color;
+        }
+};
 
 //| Global Variables
 // For note detection
@@ -130,6 +148,7 @@ int TIMER = 0;
 const int FRAMERATE = 60;
 // const int FRAME = floor(1000 / FRAMERATE);
 const int FRAME = 16;
+MenuState menuState = FLASHCARD_MENU;
 
 //| Template variables
 Texture2D grandStaffTexture;
@@ -139,6 +158,7 @@ Texture2D naturalTexture;
 Texture2D noteTexture;
 Texture2D ledgerTexture;
 Texture2D settingsTexture;
+Texture2D closeSettingsTexture;
 Font roboto;
 
 //| Colors
@@ -159,6 +179,16 @@ inline optional<unsigned int> indexOf(const T& itm, const vector<T>& vec) {
         return static_cast<unsigned int>(it - vec.begin());
     } else {
         return nullopt; // Not found
+    }
+}
+
+template <typename T>
+inline bool containsVal(const T& itm, const vector<T>& vec) {
+    auto it = find(vec.begin(), vec.end(), itm);
+    if (it != vec.end()) {
+        return true;
+    } else {
+        return false;
     }
 }
 
@@ -225,6 +255,11 @@ void loadAssets() {
     tempImage = LoadImage("assets/SettingsIcon.png");
     ImageResize(&tempImage, tempImage.width / 5, tempImage.height / 5);
     settingsTexture = LoadTextureFromImage(tempImage);
+    UnloadImage(tempImage);
+
+    tempImage = LoadImage("assets/CloseButton.png");
+    ImageResize(&tempImage, tempImage.width / 1.792, tempImage.height / 1.792);
+    closeSettingsTexture = LoadTextureFromImage(tempImage);
     UnloadImage(tempImage);
 }
 
@@ -393,45 +428,50 @@ void checkNote(string *correctNote) {
 }
 
 void drawButtons() {
-    for (auto& button : buttons) {
-        button.render();
+    bool should_render = true;
+    for (Button &button : buttons) {
+        button.AvailableVisibility(menuState);
+        button.Render();
     }
 }
 
 bool mouseLogic(string *hovered) {
     *hovered = "X";
     Vector2 mouse = GetMousePosition();
-    for (auto& button : buttons) {
-        if (button.isHovered(mouse)) {
+    for (Button &button : buttons) {
+        if (button.IsHovered(mouse)) {
             *hovered = button.name;
         }
-        if (button.isLeftClicked(mouse)) {
+        if (button.IsLeftClicked(mouse)) {
             return true;
         }
     }
     return false;
 }
 
-void showSettings(bool show = true) {
-    for (auto& button : buttons) {
-        if (button.group == SETTINGS) {
-            if (show) {
-                button.show();
-            } else {
-                button.hide();
-            }
+void buttonLogic(bool clicked, string hovered_btn) {
+    if (clicked) {
+        if (hovered_btn == "settings") {
+            menuState = SETTINGS_MENU;
+        } else if (hovered_btn == "close_settings") {
+            menuState = FLASHCARD_MENU;
+        } else if (hovered_btn == "do_sharps") {
+            SHARPS = true;
         }
     }
 }
 
-void buttonLogic(bool clicked, string hovered_btn) {
-    if (clicked) {
-        if (hovered_btn == "settings") {
-            showSettings();
-        } else if (hovered_btn == "do_sharps") {
-            showSettings(false);
-        }
-    }
+void flashcardMenu(string crct_note) {
+    checkNote(&crct_note);
+    drawStaff(grandStaffTexture);
+    drawNote(CURRENTNOTE, Transparent);
+    drawNote(crct_note, Color {255, 255, 255, 75});
+}
+
+void settingsMenu() {
+    drawStaff(grandStaffTexture);
+    drawNote(CURRENTNOTE, Transparent);
+    drawNote("C#4", Color {255, 255, 255, 255});
 }
 
 // Handles all GUI logic
@@ -441,13 +481,15 @@ void RunGUI() {
     SetTextLineSpacing(16);
     loadAssets();
 
-    Button settings_button("settings", Vector2({WINWIDTH - 50, 45}), 50, CIRCLE, settingsTexture);
-    buttons.push_back(settings_button);
+    Button settingsButton("settings", Vector2({WINWIDTH - 50, 45}), 50, CIRCLE, settingsTexture, vector<MenuState> {FLASHCARD_MENU});
+    buttons.push_back(settingsButton);
+    Button closeSettingsButton("close_settings", Vector2({WINWIDTH - 50, 45}), 50, SQUARE, closeSettingsTexture, vector<MenuState> {SETTINGS_MENU});
+    buttons.push_back(closeSettingsButton);
     // TODO: Make this an actual button, not just a texture of a flat.
-    Button sharp_button("do_sharps", Vector2({WINWIDTH - 500, 90}), 50, CIRCLE, flatTexture, SETTINGS, false);
-    buttons.push_back(sharp_button);
+    Button sharpButton("do_sharps", Vector2({WINWIDTH - 500, 90}), 50, CIRCLE, flatTexture, vector<MenuState> {SETTINGS_MENU});
+    buttons.push_back(sharpButton);
 
-    string hoveredBtn = "X";
+    string hoveredBtn = "???";
     newNoteTimer = 0;
     string correctNote = "F#3";
     bool was_clicked = false;
@@ -456,11 +498,11 @@ void RunGUI() {
         buttonLogic(mouseLogic(&hoveredBtn), hoveredBtn);
         ClearBackground(RAYWHITE);
         drawButtons();
-        checkNote(&correctNote);
-        drawStaff(grandStaffTexture);
-        drawNote(CURRENTNOTE, Transparent);
-        drawNote(correctNote, Color {255, 255, 255, 75});
-
+        if (menuState == FLASHCARD_MENU) {
+            flashcardMenu(correctNote);
+        } else if (menuState == SETTINGS_MENU) {
+            settingsMenu();
+        }
         DrawTextEx(roboto, CURRENTNOTE.c_str(), {100, 100}, 40, 2, DARKGRAY);
         EndDrawing();
         tick();
