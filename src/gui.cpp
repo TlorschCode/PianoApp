@@ -254,7 +254,7 @@ void loadAssets() {
     tempImage = LoadImage("assets/LedgerLine.png");
     relativeSizeX = tempImage.width * (standardSize / tempImage.width);
     relativeSizeY = tempImage.height * (standardSize / tempImage.width);
-    ImageResize(&tempImage, relativeSizeX, relativeSizeY);
+    ImageResize(&tempImage, relativeSizeX / 1.2, relativeSizeY * 1.5);
     ledgerTexture = LoadTextureFromImage(tempImage);
     UnloadImage(tempImage);
 
@@ -321,7 +321,8 @@ void drawNote(string useNote, Color tint = WHITE) {
     float noteStep = 44.5;
     int accidentalXOffset = -30;
     int accidentalYOffset = -5;
-    int ledgerXOffset = 0;
+    int ledgerXOffset = -15;
+    int ledgerYOffset = 4;
     int noteYOffset = 45;
 
     //# Note Decoding
@@ -338,7 +339,8 @@ void drawNote(string useNote, Color tint = WHITE) {
     if (isTreble) {
         y = isTrebleLine ? 538 - (noteStep * indexOf(note, trebleLines).value_or(-1)) : 513 - (noteStep * indexOf(note, trebleSpaces).value_or(-1));
         if (note == "C4") {
-            DrawTexture(ledgerTexture, x + ledgerXOffset, y - (ledgerTexture.height / 2), tint);
+            accidentalXOffset -= 10;
+            DrawTexture(ledgerTexture, x + ledgerXOffset, y + ledgerYOffset, tint);
         }
         DrawTexture(noteTexture, x, y - ((noteTexture.height / 2) + noteYOffset), tint);
         if (accidental != '\0') {
@@ -479,7 +481,7 @@ void buttonLogic(bool clicked, string hovered_btn) {
     }
 }
 
-void flashcardMenu(string crct_note) {
+void flashcardMenu(string &crct_note) {
     checkNote(&crct_note);
     drawStaff(grandStaffTexture);
     drawNote(CURRENTNOTE, Transparent);
@@ -487,9 +489,7 @@ void flashcardMenu(string crct_note) {
 }
 
 void settingsMenu() {
-    drawStaff(grandStaffTexture);
-    drawNote(CURRENTNOTE, Transparent);
-    drawNote("C#4", Color {255, 255, 255, 255});
+    
 }
 
 // Handles all GUI logic
