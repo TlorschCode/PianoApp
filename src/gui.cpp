@@ -49,26 +49,28 @@ class Button {
         float ocapacity = 255;
         Color color = {255, 255, 255, 255};
         Rectangle rect = {0, 0, 0, 0};
-        Color selection_color = {100, 100, 100, 255};
+        Color selection_color = {175, 175, 175, 255};
+        float size;
     public:
         string name;
         Vector2 pos;
-        float size;
         ButtonType type;
         Texture2D texture;
         vector<MenuState> available_states;
         bool shown = true;
-        bool selected = false;
-        Button(string btn_name, Vector2 btn_pos, float btn_size, ButtonType btn_type, Texture2D btn_texture, vector<MenuState> btn_available_states) {
+        bool selected;
+        bool selectable;
+        Button(string btn_name, Vector2 btn_pos, ButtonType btn_type, Texture2D btn_texture, vector<MenuState> btn_available_states, bool btn_selectable = true) {
             name = btn_name;
             pos = btn_pos;
-            size = btn_size;
             type = btn_type;
             texture = btn_texture;
             available_states = btn_available_states;
             selected = false;
+            selectable = btn_selectable;
+            size = texture.width / 2;
             if (type == SQUARE) {
-                rect = {pos.x - size, pos.y - size, size, size};
+                rect = {pos.x - (texture.width / 2), pos.y - (texture.height / 2), static_cast<float>(texture.width), static_cast<float>(texture.height)};
             }
         }
         void SetOcapacity(float target_amnt) {
@@ -80,12 +82,14 @@ class Button {
         }
         void Render() {
             if (shown) {
-                DrawTexture(texture, pos.x - (size), pos.y - (size), color);
-                if (selected) {
+                if (selected && selectable) {
                     if (type == CIRCLE) {
-                        DrawCircle(pos.x, pos.y, size + (size * 0.3), selection_color);
+                        DrawCircle(pos.x, pos.y, size, selection_color);
+                    } else {
+                        DrawRectangleRec(rect, selection_color);
                     }
                 }
+                DrawTexture(texture, pos.x - (texture.width / 2), pos.y - (texture.height / 2), color);
             }
         }
         inline bool IsHovered(Vector2 mouse_pos) {
@@ -116,6 +120,7 @@ class Button {
         void SetSelectionColor(Color slct_color) {
             selection_color = slct_color;
         }
+        // Sets where the circle 
 };
 
 //| Global Variables
@@ -149,6 +154,8 @@ Texture2D noteTexture;
 Texture2D ledgerTexture;
 Texture2D settingsTexture;
 Texture2D closeSettingsTexture;
+Texture2D flatButtonTexture;
+Texture2D sharpButtonTexture;
 Font roboto;
 
 //| Colors
@@ -271,6 +278,20 @@ void loadAssets() {
     ImageResize(&tempImage, relativeSizeX / 1.5, relativeSizeY / 1.5);
     closeSettingsTexture = LoadTextureFromImage(tempImage);
     UnloadImage(tempImage);
+
+    tempImage = LoadImage("assets/Flat.png");
+    relativeSizeX = tempImage.width * (standardSize / tempImage.width);
+    relativeSizeY = tempImage.height * (standardSize / tempImage.width);
+    ImageResize(&tempImage, relativeSizeX / 5, relativeSizeY / 5);
+    flatButtonTexture = LoadTextureFromImage(tempImage);
+    UnloadImage(tempImage);
+
+    tempImage = LoadImage("assets/sharp.png");
+    relativeSizeX = tempImage.width * (standardSize / tempImage.width);
+    relativeSizeY = tempImage.height * (standardSize / tempImage.width);
+    ImageResize(&tempImage, relativeSizeX / 5, relativeSizeY / 5);
+    sharpButtonTexture = LoadTextureFromImage(tempImage);
+    UnloadImage(tempImage);
 }
 
 // Wait in miliseconds
@@ -320,7 +341,8 @@ void drawNote(string useNote, Color tint = WHITE) {
     int x = 500;
     float noteStep = 44.5;
     int accidentalXOffset = -30;
-    int accidentalYOffset = -5;
+    int sharpYOffset = -5;
+    int flatYOffset = 13;
     int ledgerXOffset = -15;
     int ledgerYOffset = 4;
     int noteYOffset = 45;
@@ -346,13 +368,13 @@ void drawNote(string useNote, Color tint = WHITE) {
         if (accidental != '\0') {
             switch (accidental) {
                 case '#':
-                    DrawTexture(sharpTexture, x + accidentalXOffset, y - ((sharpTexture.height / 2) + accidentalYOffset), tint);
+                    DrawTexture(sharpTexture, x + accidentalXOffset, y - ((sharpTexture.height / 2) + sharpYOffset), tint);
                     break;
                 case 'b':
-                    DrawTexture(flatTexture, x + accidentalXOffset, y - ((flatTexture.height / 2) + accidentalYOffset), tint);
+                    DrawTexture(flatTexture, x + accidentalXOffset, y - ((flatTexture.height / 2) + sharpYOffset), tint);
                     break;
                 case 'N':
-                    DrawTexture(naturalTexture, x + accidentalXOffset,  y - ((naturalTexture.height / 2) + accidentalYOffset), tint);
+                    DrawTexture(naturalTexture, x + accidentalXOffset,  y - ((naturalTexture.height / 2) + sharpYOffset), tint);
                     break;
             }
         }
@@ -362,13 +384,13 @@ void drawNote(string useNote, Color tint = WHITE) {
         if (accidental != '\0') {
             switch (accidental) {
                 case '#':
-                    DrawTexture(sharpTexture, x + accidentalXOffset, y - ((sharpTexture.height / 2) + accidentalYOffset), tint);
+                    DrawTexture(sharpTexture, x + accidentalXOffset, y - ((sharpTexture.height / 2) + sharpYOffset), tint);
                     break;
                 case 'b':
-                    DrawTexture(flatTexture, x + accidentalXOffset, y - ((flatTexture.height / 2) + accidentalYOffset), tint);
+                    DrawTexture(flatTexture, x + accidentalXOffset, y - ((flatTexture.height / 2) + flatYOffset), tint);
                     break;
                 case 'N':
-                    DrawTexture(naturalTexture, x + accidentalXOffset,  y - ((naturalTexture.height / 2) + accidentalYOffset), tint);
+                    DrawTexture(naturalTexture, x + accidentalXOffset,  y - ((naturalTexture.height / 2) + sharpYOffset), tint);
                     break;
             }
         }
@@ -477,11 +499,36 @@ void buttonLogic(bool clicked, string hovered_btn) {
             menuState = FLASHCARD_MENU;
         } else if (hovered_btn == "do_sharps") {
             SHARPS = true;
+        } else if (hovered_btn == "do_flats") {
+            SHARPS = false;
+        }
+        for (Button &button : buttons) { // FIXME: Logic is very coupled. Fix deselection process.
+            if (hovered_btn == button.name) {
+                cout << "DEBUG: " << button.name << " WAS SELECTED\n";
+                button.selected = true;
+            } else {
+                button.selected = false;
+            }
+            if (button.name == "do_sharps") {
+                if (SHARPS) {
+                    button.selected = true;
+                } else {
+                    button.selected = false;
+                }
+            }
+            if (button.name == "do_flats") {
+                if (SHARPS) {
+                    button.selected = false;
+                } else {
+                    button.selected = true;
+                }
+            }
         }
     }
 }
 
 void flashcardMenu(string &crct_note) {
+    drawButtons();
     checkNote(&crct_note);
     drawStaff(grandStaffTexture);
     drawNote(CURRENTNOTE, Transparent);
@@ -489,7 +536,8 @@ void flashcardMenu(string &crct_note) {
 }
 
 void settingsMenu() {
-    
+    for (Button &button : buttons) {
+    }
 }
 
 // Handles all GUI logic
@@ -499,13 +547,17 @@ void RunGUI() {
     SetTextLineSpacing(16);
     loadAssets();
 
-    Button settingsButton("settings", Vector2({WINWIDTH - 40, 80}), 50, CIRCLE, settingsTexture, vector<MenuState> {FLASHCARD_MENU});
+    Button settingsButton("settings", Vector2({WINWIDTH - 80, 80}), CIRCLE, settingsTexture, vector<MenuState> {FLASHCARD_MENU}, false);
     buttons.push_back(settingsButton);
-    Button closeSettingsButton("close_settings", Vector2({WINWIDTH - 40, 80}), 50, CIRCLE, closeSettingsTexture, vector<MenuState> {SETTINGS_MENU});
+    Button closeSettingsButton("close_settings", Vector2({WINWIDTH - 80, 80}), CIRCLE, closeSettingsTexture, vector<MenuState> {SETTINGS_MENU}, false);
     buttons.push_back(closeSettingsButton);
     // TODO: Make this an actual button, not just a texture of a flat.
-    Button sharpButton("do_sharps", Vector2({WINWIDTH - 500, 90}), 50, CIRCLE, sharpTexture, vector<MenuState> {SETTINGS_MENU});
+    Button sharpButton("do_sharps", Vector2({(WINWIDTH / 2) + 500, 300}), SQUARE, sharpButtonTexture, vector<MenuState> {SETTINGS_MENU});
+    sharpButton.selected = true;
     buttons.push_back(sharpButton);
+
+    Button flatButton("do_flats", Vector2({(WINWIDTH / 2) + 500, 370}), SQUARE, flatButtonTexture, vector<MenuState> {SETTINGS_MENU});
+    buttons.push_back(flatButton);
 
     string hoveredBtn = "???";
     newNoteTimer = 0;
@@ -516,10 +568,14 @@ void RunGUI() {
         buttonLogic(mouseLogic(&hoveredBtn), hoveredBtn);
         ClearBackground(RAYWHITE);
         drawButtons();
+
         if (menuState == FLASHCARD_MENU) {
             flashcardMenu(correctNote);
         } else if (menuState == SETTINGS_MENU) {
             settingsMenu();
+            // FIXME: Doesn't work correctly
+            sharpButton.selected = SHARPS;
+            flatButton.selected = !SHARPS;
         }
         DrawTextEx(roboto, CURRENTNOTE.c_str(), {100, 100}, 40, 2, DARKGRAY);
         EndDrawing();
