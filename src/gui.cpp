@@ -1,9 +1,15 @@
+#ifdef DEBUG
+    #include <iostream>
+    #define DEBUG_LOG(x) std::cout << "  DEBUG:  " << x << "\n"
+#else
+    #define DEBUG_LOG(x)
+#endif
+
 // TODO: Add volume slider
 
 //| INIT
 #include <string>
 #include <atomic>
-#include <iostream>
 #include <algorithm>
 #include <chrono>
 #include <thread>
@@ -25,81 +31,107 @@ static mt19937 gen(rd()); // random number generator
 
 //| ENUMERATORS
 enum ButtonType {SQUARE, CIRCLE};
-enum ButtonGroup {DEFAULT, SETTINGS};
+enum MenuState {FLASHCARD_MENU, SETTINGS_MENU};
+
+//| Template functions
+inline string to_lowercase(const string &str);
+template <typename T> inline optional<unsigned int> indexOf(const T& itm, const vector<T>& vec);
+template <typename T, size_t N> inline optional<unsigned int> indexOf(const T& itm, const T (&arr)[N]);
+template <typename T, size_t N> inline constexpr size_t arraySize(T (&)[N]);
+template <typename T> inline bool containsVal(const T& itm, const vector<T>& vec);
 
 //| CLASSES
 class Button {
     private:
         float ocapacity = 255;
         Color color = {255, 255, 255, 255};
+        Rectangle rect = {0, 0, 0, 0};
+        Rectangle outlineRect = {0, 0, 0, 0};
+        Color selection_color = {175, 175, 175, 255};
+        float size;
+        float outlineSize;
     public:
         string name;
         Vector2 pos;
-        float size;
         ButtonType type;
         Texture2D texture;
-        ButtonGroup group;
-        bool shown;
-        Rectangle rect = {0, 0, 0, 0};
-        Button(string btn_name, Vector2 btn_pos, float btn_size, ButtonType btn_type, Texture2D btn_texture, ButtonGroup btn_group = DEFAULT, bool btn_shown = true) {
+        vector<MenuState> available_states;
+        bool shown = true;
+        bool selected;
+        bool selectable;
+        Button(string btn_name, Vector2 btn_pos, ButtonType btn_type, Texture2D btn_texture, vector<MenuState> btn_available_states, bool btn_selectable = true) {
             name = btn_name;
             pos = btn_pos;
-            size = btn_size;
             type = btn_type;
             texture = btn_texture;
-            group = btn_group;
-            shown = btn_shown;
+            available_states = btn_available_states;
+            selected = false;
+            selectable = btn_selectable;
+            size = texture.width / 2;
             if (type == SQUARE) {
-                rect = {pos.x - (size / 2), pos.y - (size / 2), size, size};
+                rect = {pos.x - (texture.width / 2), pos.y - (texture.height / 2), static_cast<float>(texture.width), static_cast<float>(texture.height)};
+                outlineRect = {(pos.x - (texture.width / 2)) - 5, (pos.y - (texture.height / 2)) - 5, static_cast<float>(texture.width + 10), static_cast<float>(texture.height + 10)};
+            } else {
+                outlineSize = size + (size * 0.1);
             }
         }
-        void setOcapacity(float target_amnt) {
+        void SetOutlineSize(float outline_size) {
+            if (type == CIRCLE) {
+                DEBUG_LOG("IS CIRCLE");
+                outlineSize = size + outline_size;
+            } else {
+                outlineRect = {(pos.x - (texture.width / 2)) - (outline_size / 2), (pos.y - (texture.height / 2)) - (outline_size / 2), static_cast<float>(texture.width + outline_size), static_cast<float>(texture.height + outline_size)};
+            }
+        }
+        void SetOcapacity(float target_amnt) {
             ocapacity = target_amnt;
             color = {255, 255, 255, static_cast<unsigned char>(ocapacity)};
         }
-        void render() {
+        void AvailableVisibility(MenuState menu_state) {
+            shown = containsVal(menu_state, available_states);
+        }
+        void Render() {
             if (shown) {
-                DrawTexture(texture, pos.x - (size), pos.y - (size), color);
+                if (selected && selectable) {
+                    if (type == CIRCLE) {
+                        DrawCircle(pos.x, pos.y, outlineSize, selection_color);
+                    } else {
+                        DrawRectangleRec(outlineRect, selection_color);
+                    }
+                }
+                DrawTexture(texture, pos.x - (texture.width / 2), pos.y - (texture.height / 2), color);
             }
         }
-        inline bool isHovered(Vector2 mouse_pos) {
+        inline bool IsHovered(Vector2 mouse_pos) {
             if (type == CIRCLE) {
-                return CheckCollisionPointCircle(mouse_pos, pos, size);
+                return CheckCollisionPointCircle(mouse_pos, pos, size) && shown;
             } else {
-                return CheckCollisionPointRec(mouse_pos, rect);
+                return CheckCollisionPointRec(mouse_pos, rect) && shown;
             }
         }
-        inline bool isLeftClicked(Vector2 mouse_pos) {
-            return isHovered(mouse_pos) && IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+        inline bool IsLeftClicked(Vector2 mouse_pos) {
+            return IsHovered(mouse_pos) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
         }
-        inline bool isRightClicked(Vector2 mouse_pos) {
-            return isHovered(mouse_pos) && IsMouseButtonDown(MOUSE_BUTTON_RIGHT);
+        inline bool IsRightClicked(Vector2 mouse_pos) {
+            return IsHovered(mouse_pos) && IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
         }
-        void hide() {
+        void ToggleSelection() {
+            selected = !selected;
+        }
+        void Hide() {
             shown = false;
         }
-        void show() {
+        void Show() {
             shown = true;
         }
-        void toggle() {
+        void ToggleVisibility() {
             shown = !shown;
         }
+        void SetSelectionColor(Color slct_color) {
+            selection_color = slct_color;
+        }
+        // Sets where the circle 
 };
-
-//| Template functions
-// Adds button info to associated lists
-// PARAMETERS
-// buttonName is a string by which the button will be identified with.
-// buttonLocation is where the button is positioned.
-// buttonSize is the size of the hitbox of the button.
-// buttonType is a string that can either be "circle" or "square" which determines the shape of the hitbox.
-void addButton(string buttonName, Vector2 buttonLocation, float buttonSize, string buttonType, Texture2D buttonTexture);
-inline string to_lowercase(const string &str);
-void mouseLogic(char hoveredBtn, Vector2 toggleBtnLoc, string correctNote); 
-void drawNote(string useNote, Color tint);
-template <typename T> inline optional<unsigned int> indexOf(const T& itm, const vector<T>& vec);
-template <typename T, size_t N> inline optional<unsigned int> indexOf(const T& itm, const T (&arr)[N]);
-template <typename T, size_t N> inline constexpr size_t arraySize(T (&)[N]);
 
 //| Global Variables
 // For note detection
@@ -114,15 +146,6 @@ int sizeTrebleLines = sizeof(trebleLines) / sizeof(trebleLines[0]);
 int sizeTrebleSpaces = sizeof(trebleSpaces) / sizeof(trebleSpaces[0]);
 int sizeBaseLines = sizeof(baseLines) / sizeof(baseLines[0]);
 int sizeBaseSpaces = sizeof(baseSpaces) / sizeof(baseSpaces[0]);
-// For note rendering
-float noteStep = 40.9;
-int sharpXOffset = -26;
-int flatXOffset = -9;
-int flatYOffset = 15;
-int naturalXOffset = -20;
-int naturalYOfffset = 45;
-int ledgerXOffset = 28;
-int noteYOffset = 45;
 // Timers and frames
 int newNoteTimer = 0;
 int checkNoteTimer = 0;
@@ -130,6 +153,7 @@ int TIMER = 0;
 const int FRAMERATE = 60;
 // const int FRAME = floor(1000 / FRAMERATE);
 const int FRAME = 16;
+MenuState menuState = FLASHCARD_MENU;
 
 //| Template variables
 Texture2D grandStaffTexture;
@@ -139,6 +163,9 @@ Texture2D naturalTexture;
 Texture2D noteTexture;
 Texture2D ledgerTexture;
 Texture2D settingsTexture;
+Texture2D closeSettingsTexture;
+Texture2D flatButtonTexture;
+Texture2D sharpButtonTexture;
 Font roboto;
 
 //| Colors
@@ -159,6 +186,16 @@ inline optional<unsigned int> indexOf(const T& itm, const vector<T>& vec) {
         return static_cast<unsigned int>(it - vec.begin());
     } else {
         return nullopt; // Not found
+    }
+}
+
+template <typename T>
+inline bool containsVal(const T& itm, const vector<T>& vec) {
+    auto it = find(vec.begin(), vec.end(), itm);
+    if (it != vec.end()) {
+        return true;
+    } else {
+        return false;
     }
 }
 
@@ -188,44 +225,57 @@ inline int randint(int min, int max) {
     return dist(gen);
 }
 
+Texture2D loadAndResize(const std::string &path, float scaleFactorX, float scaleFactorY) {
+    Image img = LoadImage(path.c_str());
+    ImageResize(&img, img.width * scaleFactorX, img.height * scaleFactorY);
+    Texture2D tex = LoadTextureFromImage(img);
+    UnloadImage(img);
+    return tex;
+}
+
+Texture2D loadAndResize(const std::string &path, float scaleFactor) {
+    Image img = LoadImage(path.c_str());
+    ImageResize(&img, img.width * scaleFactor, img.height * scaleFactor);
+    Texture2D tex = LoadTextureFromImage(img);
+    UnloadImage(img);
+    return tex;
+}
+
+Texture2D loadAndResizeRelative(const std::string &path, float scaleFactor, float standardImgSize) {
+    Image img = LoadImage(path.c_str());
+    float relativeSizeX = img.width * (standardImgSize / img.width);
+    float relativeSizeY = img.height * (standardImgSize / img.width);
+    ImageResize(&img, relativeSizeX * scaleFactor, relativeSizeY * scaleFactor);
+    Texture2D tex = LoadTextureFromImage(img);
+    UnloadImage(img);
+    return tex;
+}
+
+Texture2D loadAndResizeRelative(const std::string &path, float scaleFactorX, float scaleFactorY, float standardImgSize) {
+    Image img = LoadImage(path.c_str());
+    float relativeSizeX = img.width * (standardImgSize / img.width);
+    float relativeSizeY = img.height * (standardImgSize / img.width);
+    ImageResize(&img, relativeSizeX * scaleFactorX, relativeSizeY * scaleFactorY);
+    Texture2D tex = LoadTextureFromImage(img);
+    UnloadImage(img);
+    return tex;
+}
+
 // Loads assets
 void loadAssets() {
     roboto = LoadFontEx("assets/Roboto-Black.ttf", 128, NULL, 0);
+    float standardSize = 100;
 
-    Image tempImage = LoadImage("assets/GrandStaff.png");
-    ImageResize(&tempImage, tempImage.width * 2, tempImage.height * 2);
-    grandStaffTexture = LoadTextureFromImage(tempImage);
-    UnloadImage(tempImage);
-
-    tempImage = LoadImage("assets/sharp.png");
-    ImageResize(&tempImage, tempImage.width / 9, tempImage.height / 9);
-    sharpTexture = LoadTextureFromImage(tempImage);
-    UnloadImage(tempImage);
-
-    tempImage = LoadImage("assets/Flat.png");
-    ImageResize(&tempImage, tempImage.width / 9.7, tempImage.height / 9.7);
-    flatTexture = LoadTextureFromImage(tempImage);
-    UnloadImage(tempImage);
-
-    tempImage = LoadImage("assets/natural.png");
-    ImageResize(&tempImage, tempImage.width / 8, tempImage.height / 8);
-    naturalTexture = LoadTextureFromImage(tempImage);
-    UnloadImage(tempImage);
-
-    tempImage = LoadImage("assets/QuarterNote.png");
-    ImageResize(&tempImage, tempImage.width / 1.4, tempImage.height / 1.4);
-    noteTexture = LoadTextureFromImage(tempImage);
-    UnloadImage(tempImage);
-
-    tempImage = LoadImage("assets/LedgerLine.png");
-    ImageResize(&tempImage, tempImage.width / 2.5, tempImage.height / 2);
-    ledgerTexture = LoadTextureFromImage(tempImage);
-    UnloadImage(tempImage);
-
-    tempImage = LoadImage("assets/SettingsIcon.png");
-    ImageResize(&tempImage, tempImage.width / 5, tempImage.height / 5);
-    settingsTexture = LoadTextureFromImage(tempImage);
-    UnloadImage(tempImage);
+    grandStaffTexture = loadAndResizeRelative("assets/GrandStaff.png", 18, standardSize);
+    sharpTexture = loadAndResizeRelative("assets/sharp.png", 0.25f, standardSize);
+    flatTexture = loadAndResizeRelative("assets/Flat.png", 0.25f, standardSize);
+    naturalTexture = loadAndResizeRelative("assets/natural.png", 0.25f, standardSize);
+    noteTexture = loadAndResizeRelative("assets/QuarterNote.png", 0.5f, standardSize);
+    ledgerTexture = loadAndResizeRelative("assets/LedgerLine.png", 0.8333f, 0.6666f, standardSize);
+    settingsTexture = loadAndResizeRelative("assets/SettingsIcon.png", 0.6666f, standardSize);
+    closeSettingsTexture = loadAndResizeRelative("assets/CloseButton.png", 0.6666f, standardSize);
+    flatButtonTexture = loadAndResizeRelative("assets/Flat.png", 0.3f, standardSize);
+    sharpButtonTexture = loadAndResizeRelative("assets/sharp.png", 0.3f, standardSize);
 }
 
 // Wait in miliseconds
@@ -265,18 +315,41 @@ void drawStaff(Texture2D txtr) {
     );
 }
 
+inline char getAccidental(string note) {
+    return (note.length() == 3) ? note.at(1) : '\0';
+}
+
+inline string getNoteAndOctave(string note) {
+    return (note.length() == 3) ? (note.substr(0, 1) + note.back()) : note;
+}
+
+inline string getNote(string note) {
+    return (note).substr(0, 1);
+}
+
+inline char getOctave(string note) {
+    return (note).back();
+}
+
 // Displays whichever note is passed into it.
 // The tint of the textures is changeable, but defaults to White.
 void drawNote(string useNote, Color tint = WHITE) {
-    // 40.9 pixels between each line
+    // 44.5 pixels between each line
     // 495 is the bottom line for Treble Clef, or E4
-    // 785 is the bottom line for Base Clef, or G2
-    //# Note Decoding
+    // 803 is the bottom line for Base Clef, or G2
     int y = 0;
     int x = 500;
+    float noteStep = 44.5;
+    int accidentalXOffset = -30;
+    int sharpYOffset = -5;
+    int flatYOffset = 13;
+    int ledgerXOffset = -15;
+    int ledgerYOffset = 4;
+    int noteYOffset = 45;
 
-    string note = (useNote.length() == 3) ? (useNote.substr(0, 1) + useNote.back()) : useNote;
-    char accidental = (useNote.length() == 3) ? useNote.at(1) : '\0';
+    //# Note Decoding
+    string note = getNoteAndOctave(useNote);
+    char accidental = getAccidental(useNote);
     bool isTrebleLine = indexOf(note, trebleLines) != nullopt;
     bool isTrebleSpace = indexOf(note, trebleSpaces) != nullopt;
     bool isTreble = isTrebleLine || isTrebleSpace;
@@ -286,37 +359,38 @@ void drawNote(string useNote, Color tint = WHITE) {
 
     //# Note Rendering
     if (isTreble) {
-        y = isTrebleLine ? 535 - (noteStep * indexOf(note, trebleLines).value_or(-1)) : 515 - (noteStep * indexOf(note, trebleSpaces).value_or(-1));
+        y = isTrebleLine ? 538 - (noteStep * indexOf(note, trebleLines).value_or(-1)) : 513 - (noteStep * indexOf(note, trebleSpaces).value_or(-1));
         if (note == "C4") {
-            DrawTexture(ledgerTexture, x + ledgerXOffset, y - (ledgerTexture.height / 2), tint);
+            accidentalXOffset -= 10;
+            DrawTexture(ledgerTexture, x + ledgerXOffset, y + ledgerYOffset, tint);
         }
         DrawTexture(noteTexture, x, y - ((noteTexture.height / 2) + noteYOffset), tint);
         if (accidental != '\0') {
             switch (accidental) {
                 case '#':
-                    DrawTexture(sharpTexture, x + sharpXOffset, y - (sharpTexture.height / 2), tint);
+                    DrawTexture(sharpTexture, x + accidentalXOffset, y - ((sharpTexture.height / 2) + sharpYOffset), tint);
                     break;
                 case 'b':
-                    DrawTexture(flatTexture, x + flatXOffset, y - ((flatTexture.height / 2) + flatYOffset), tint);
+                    DrawTexture(flatTexture, x + accidentalXOffset, y - ((flatTexture.height / 2) + flatYOffset), tint);
                     break;
                 case 'N':
-                    DrawTexture(naturalTexture, x + naturalXOffset,  y - ((naturalTexture.height / 2) + naturalYOfffset), tint);
+                    DrawTexture(naturalTexture, x + accidentalXOffset,  y - ((naturalTexture.height / 2) + sharpYOffset), tint);
                     break;
             }
         }
     } else if (isBase) {  //# Base Clef
-        y = isBaseLine ? 785 - (noteStep * indexOf(note, baseLines).value_or(-1)) :  805 - (noteStep * indexOf(note, baseSpaces).value_or(-1));
+        y = isBaseLine ? 800 - (noteStep * indexOf(note, baseLines).value_or(-1)) :  822 - (noteStep * indexOf(note, baseSpaces).value_or(-1));
         DrawTexture(noteTexture, x, y - ((noteTexture.height / 2) + noteYOffset), tint);
         if (accidental != '\0') {
             switch (accidental) {
                 case '#':
-                    DrawTexture(sharpTexture, x + sharpXOffset, y - (sharpTexture.height / 2), tint);
+                    DrawTexture(sharpTexture, x + accidentalXOffset, y - ((sharpTexture.height / 2) + sharpYOffset), tint);
                     break;
                 case 'b':
-                    DrawTexture(flatTexture, x + flatXOffset, y - ((flatTexture.height / 2) + flatYOffset), tint);
+                    DrawTexture(flatTexture, x + accidentalXOffset, y - ((flatTexture.height / 2) + flatYOffset), tint);
                     break;
                 case 'N':
-                    DrawTexture(naturalTexture, x + naturalXOffset,  y - ((naturalTexture.height / 2) + naturalYOfffset), tint);
+                    DrawTexture(naturalTexture, x + accidentalXOffset,  y - ((naturalTexture.height / 2) + sharpYOffset), tint);
                     break;
             }
         }
@@ -326,23 +400,23 @@ void drawNote(string useNote, Color tint = WHITE) {
 // Checks whether the correct note is being played.
 // Handles new target note logic and renders the target note on the screen.
 void checkNote(string *correctNote) {
-    char octave = (*correctNote).back();
-    char accidental = (*correctNote).length() == 3 ? (*correctNote).at(1) : '\0';
-    string note = (*correctNote).substr(0, 1);
+    char octave = getOctave(*correctNote);
+    char accidental = getAccidental(*correctNote);
+    string note = getNote(*correctNote);
     if (SHARPS) {
         if (accidental == 'b') {
-            cout << "  DEBUG:  " << note + accidental << "\n";
+            DEBUG_LOG(note + accidental);
             int index = indexOf((note + accidental), flatNotes).value_or(-1);
-            cout << "  DEBUG:  " << index << "\n";
-            cout << "  DEBUG:  " << sharpNotes[index] << "\n";
+            DEBUG_LOG(index);
+            DEBUG_LOG(sharpNotes[index]);
             *correctNote = sharpNotes[index] + octave;
         }
     } else {
         if (accidental == '#') {
-            cout << "  DEBUG:  " << note + accidental << "\n";
+            DEBUG_LOG(note + accidental);
             int index = indexOf((note + accidental), sharpNotes).value_or(-1);
-            cout << "  DEBUG:  " << index << "\n";
-            cout << "  DEBUG:  " << flatNotes[index];
+            DEBUG_LOG(index);
+            DEBUG_LOG(flatNotes[index]);
             *correctNote = flatNotes[index] + octave;
         }
     }
@@ -370,68 +444,108 @@ void checkNote(string *correctNote) {
                 *correctNote = baseLines[(randint(0, sizeBaseLines - 1))];
             }
         }
-        if (randint(0, 1)) {
-            if (SHARPS) {
-                if ((*correctNote).substr(0,1) == "E" ) {
-                    *correctNote = "F" + (*correctNote).substr(1,1);
-                } else if ((*correctNote).substr(0,1) == "B") {
-                    *correctNote = "C" + (*correctNote).substr(1,1);
-                } else {
-                    *correctNote = (*correctNote).substr(0,1) + "#" + (*correctNote).substr(1,1);
-                }
-            } else {
-                if ((*correctNote).substr(0,1) == "F" ) {
-                    *correctNote = "E" + (*correctNote).substr(1,1);
-                } else if ((*correctNote).substr(0,1) == "C") {
-                    *correctNote = "B" + (*correctNote).substr(1,1);
-                } else {
-                    *correctNote = (*correctNote).substr(0,1) + "b" + (*correctNote).substr(1,1);
-                }
-            }
-        }
     }
 }
 
 void drawButtons() {
-    for (auto& button : buttons) {
-        button.render();
+    bool should_render = true;
+    for (Button &button : buttons) {
+        button.AvailableVisibility(menuState);
+        button.Render();
     }
 }
 
 bool mouseLogic(string *hovered) {
-    *hovered = "X";
+    *hovered = "???";
     Vector2 mouse = GetMousePosition();
-    for (auto& button : buttons) {
-        if (button.isHovered(mouse)) {
+    if (IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE)) {
+        DEBUG_LOG(mouse.x << ", " << mouse.y);
+    }
+    for (Button &button : buttons) {
+        if (button.IsHovered(mouse)) {
             *hovered = button.name;
         }
-        if (button.isLeftClicked(mouse)) {
+        if (button.IsLeftClicked(mouse)) {
             return true;
         }
     }
     return false;
 }
 
-void showSettings(bool show = true) {
-    for (auto& button : buttons) {
-        if (button.group == SETTINGS) {
-            if (show) {
-                button.show();
+void buttonLogic(bool clicked, string hovered_btn) {
+    if (clicked) {
+        if (hovered_btn == "settings") {
+            menuState = SETTINGS_MENU;
+        } else if (hovered_btn == "close_settings") {
+            menuState = FLASHCARD_MENU;
+        } else if (hovered_btn == "do_sharps") {
+            SHARPS = true;
+        } else if (hovered_btn == "do_flats") {
+            SHARPS = false;
+        }
+        for (Button &button : buttons) {
+            if (hovered_btn == button.name) {
+                DEBUG_LOG(button.name << " WAS SELECTED");
+                button.selected = true;
             } else {
-                button.hide();
+                button.selected = false;
             }
         }
     }
 }
 
-void buttonLogic(bool clicked, string hovered_btn) {
-    if (clicked) {
-        if (hovered_btn == "settings") {
-            showSettings();
-        } else if (hovered_btn == "do_sharps") {
-            showSettings(false);
+void selectAccidental() {
+    for (Button &button : buttons) {
+        if (button.name == "do_sharps") {
+            if (SHARPS) {
+                button.selected = true;
+            } else {
+                button.selected = false;
+            }
+        }
+        if (button.name == "do_flats") {
+            if (SHARPS) {
+                button.selected = false;
+            } else {
+                button.selected = true;
+            }
         }
     }
+}
+
+string convertToLegalNote(string inputNote) { // FIXME: Note isn't displaying
+    if ((getNote(inputNote) + getAccidental(inputNote)) == "Fb") {
+        return "E" + getOctave(inputNote);
+        DEBUG_LOG("Fb");
+    }
+    else if ((getNote(inputNote) + getAccidental(inputNote)) == "Cb") {
+        return "B" + getOctave(inputNote);
+        DEBUG_LOG("Cb");
+    }
+    else if ((getNote(inputNote) + getAccidental(inputNote)) == "E#") {
+        return "F" + getOctave(inputNote);
+        DEBUG_LOG("E#");
+    }
+    else if ((getNote(inputNote) + getAccidental(inputNote)) == "B#") {
+        return "C" + getOctave(inputNote);
+        DEBUG_LOG("B#");
+    }
+    else {
+        return inputNote;
+    }
+}
+
+void flashcardMenu(string &crct_note) {
+    drawButtons();
+    // crct_note = convertToLegalNote(crct_note);
+    checkNote(&crct_note);
+    drawStaff(grandStaffTexture);
+    drawNote(CURRENTNOTE, Transparent);
+    drawNote(crct_note, Color {255, 255, 255, 75});
+}
+
+void settingsMenu() {
+    selectAccidental();
 }
 
 // Handles all GUI logic
@@ -441,27 +555,36 @@ void RunGUI() {
     SetTextLineSpacing(16);
     loadAssets();
 
-    Button settings_button("settings", Vector2({WINWIDTH - 50, 45}), 50, CIRCLE, settingsTexture);
-    buttons.push_back(settings_button);
-    // TODO: Make this an actual button, not just a texture of a flat.
-    Button sharp_button("do_sharps", Vector2({WINWIDTH - 500, 90}), 50, CIRCLE, flatTexture, SETTINGS, false);
-    buttons.push_back(sharp_button);
+    Button settingsButton("settings", Vector2({WINWIDTH - 80, 80}), CIRCLE, settingsTexture, vector<MenuState> {FLASHCARD_MENU}, false);
+    buttons.push_back(settingsButton);
+    Button closeSettingsButton("close_settings", Vector2({WINWIDTH - 80, 80}), CIRCLE, closeSettingsTexture, vector<MenuState> {SETTINGS_MENU}, false);
+    buttons.push_back(closeSettingsButton);
+    Button sharpButton("do_sharps", Vector2({(WINWIDTH / 2) - 50, WINHEIGHT / 2}), SQUARE, sharpButtonTexture, vector<MenuState> {SETTINGS_MENU});
+    sharpButton.SetOutlineSize(20);
+    buttons.push_back(sharpButton);
+    Button flatButton("do_flats", Vector2({(WINWIDTH / 2) + 50, WINHEIGHT / 2}), SQUARE, flatButtonTexture, vector<MenuState> {SETTINGS_MENU});
+    flatButton.SetOutlineSize(20);
+    buttons.push_back(flatButton);
 
-    string hoveredBtn = "X";
+    string hoveredBtn = "???";
     newNoteTimer = 0;
-    string correctNote = "F#3";
+    string correctNote = "G#3";
     bool was_clicked = false;
 
     while (!WindowShouldClose()) {
         buttonLogic(mouseLogic(&hoveredBtn), hoveredBtn);
         ClearBackground(RAYWHITE);
         drawButtons();
-        checkNote(&correctNote);
-        drawStaff(grandStaffTexture);
-        drawNote(CURRENTNOTE, Transparent);
-        drawNote(correctNote, Color {255, 255, 255, 75});
 
-        DrawTextEx(roboto, CURRENTNOTE.c_str(), {100, 100}, 40, 2, DARKGRAY);
+        if (menuState == FLASHCARD_MENU) {
+            flashcardMenu(correctNote);
+        } else if (menuState == SETTINGS_MENU) {
+            settingsMenu();
+            // FIXME: Doesn't work correctly
+            sharpButton.selected = SHARPS;
+            flatButton.selected = !SHARPS;
+        }
+        // DrawTextEx(roboto, CURRENTNOTE.c_str(), {100, 100}, 40, 2, DARKGRAY);
         EndDrawing();
         tick();
     }
