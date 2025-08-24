@@ -580,9 +580,9 @@ void RunGUI() {
             flashcardMenu(correctNote);
         } else if (menuState == SETTINGS_MENU) {
             settingsMenu();
-            // FIXME: Doesn't work correctly
-            sharpButton.selected = SHARPS;
-            flatButton.selected = !SHARPS;
+            // // FIXME: Doesn't work correctly
+            // sharpButton.selected = SHARPS;
+            // flatButton.selected = !SHARPS;
         }
         // DrawTextEx(roboto, CURRENTNOTE.c_str(), {100, 100}, 40, 2, DARKGRAY);
         EndDrawing();
