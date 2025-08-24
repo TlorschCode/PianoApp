@@ -315,19 +315,19 @@ void drawStaff(Texture2D txtr) {
     );
 }
 
-char getAccidental(string note) {
+inline char getAccidental(string note) {
     return (note.length() == 3) ? note.at(1) : '\0';
 }
 
-string getNoteAndOctave(string note) {
+inline string getNoteAndOctave(string note) {
     return (note.length() == 3) ? (note.substr(0, 1) + note.back()) : note;
 }
 
-string getNote(string note) {
+inline string getNote(string note) {
     return (note).substr(0, 1);
 }
 
-char getOctave(string note) {
+inline char getOctave(string note) {
     return (note).back();
 }
 
@@ -483,26 +483,31 @@ void buttonLogic(bool clicked, string hovered_btn) {
         } else if (hovered_btn == "do_flats") {
             SHARPS = false;
         }
-        for (Button &button : buttons) { // FIXME: Logic is very coupled. Fix deselection process.
+        for (Button &button : buttons) {
             if (hovered_btn == button.name) {
                 DEBUG_LOG(button.name << " WAS SELECTED");
                 button.selected = true;
             } else {
                 button.selected = false;
             }
-            if (button.name == "do_sharps") {
-                if (SHARPS) {
-                    button.selected = true;
-                } else {
-                    button.selected = false;
-                }
+        }
+    }
+}
+
+void selectAccidental() {
+    for (Button &button : buttons) {
+        if (button.name == "do_sharps") {
+            if (SHARPS) {
+                button.selected = true;
+            } else {
+                button.selected = false;
             }
-            if (button.name == "do_flats") {
-                if (SHARPS) {
-                    button.selected = false;
-                } else {
-                    button.selected = true;
-                }
+        }
+        if (button.name == "do_flats") {
+            if (SHARPS) {
+                button.selected = false;
+            } else {
+                button.selected = true;
             }
         }
     }
@@ -540,8 +545,7 @@ void flashcardMenu(string &crct_note) {
 }
 
 void settingsMenu() {
-    for (Button &button : buttons) {
-    }
+    selectAccidental();
 }
 
 // Handles all GUI logic
@@ -580,7 +584,7 @@ void RunGUI() {
             sharpButton.selected = SHARPS;
             flatButton.selected = !SHARPS;
         }
-        DrawTextEx(roboto, CURRENTNOTE.c_str(), {100, 100}, 40, 2, DARKGRAY);
+        // DrawTextEx(roboto, CURRENTNOTE.c_str(), {100, 100}, 40, 2, DARKGRAY);
         EndDrawing();
         tick();
     }
