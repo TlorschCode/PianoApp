@@ -330,6 +330,9 @@ inline string getNote(string note) {
 inline char getOctave(string note) {
     return (note).back();
 }
+inline string getOctaveStr(string note) {
+    return string(1, note.back());
+}
 
 // Displays whichever note is passed into it.
 // The tint of the textures is changeable, but defaults to White.
@@ -397,6 +400,52 @@ void drawNote(string useNote, Color tint = WHITE) {
     }
 }
 
+string convertToLegalNote(string inputNote) { // FIXME: Note isn't displaying
+    if ((getNote(inputNote) + getAccidental(inputNote)) == "Fb") {
+        DEBUG_LOG("Fb");
+        return "E" + getOctaveStr(inputNote);
+    }
+    else if ((getNote(inputNote) + getAccidental(inputNote)) == "Cb") {
+        DEBUG_LOG("Cb");
+        return "B" + getOctaveStr(inputNote);
+    }
+    else if ((getNote(inputNote) + getAccidental(inputNote)) == "E#") {
+        DEBUG_LOG("E#");
+        return "F" + getOctaveStr(inputNote);
+    }
+    else if ((getNote(inputNote) + getAccidental(inputNote)) == "B#") {
+        DEBUG_LOG("B#");
+        return "C" + getOctaveStr(inputNote);
+    }
+    else {
+        return inputNote;
+    }
+}
+
+void setNewNote(string *_correctNote) {
+    if (randint(0, 1)) {
+        if (randint(0, 1)) {
+            *_correctNote = trebleLines[(randint(0, sizeTrebleLines - 1))];
+        } else {
+            *_correctNote = trebleSpaces[(randint(0, sizeTrebleSpaces - 1))];
+        }
+    } else {
+        if (randint(0, 1)) {
+            *_correctNote = baseSpaces[(randint(0, sizeBaseSpaces - 1))];
+        } else {
+            *_correctNote = baseLines[(randint(0, sizeBaseLines - 1))];
+        }
+    }
+    if (randint(0, 2) == 0) {
+        if (SHARPS) {
+            *_correctNote = getNote(*_correctNote) + "#" + getOctave(*_correctNote);
+        } else {
+            *_correctNote = getNote(*_correctNote) + "b" + getOctave(*_correctNote);
+        }
+        *_correctNote = convertToLegalNote(*_correctNote);
+    }
+}
+
 // Checks whether the correct note is being played.
 // Handles new target note logic and renders the target note on the screen.
 void checkNote(string *correctNote) {
@@ -431,19 +480,7 @@ void checkNote(string *correctNote) {
         drawNote(*correctNote);
     }
     if (newNoteTimer == 1) {
-        if (randint(0, 1)) {
-            if (randint(0, 1)) {
-                *correctNote = trebleLines[(randint(0, sizeTrebleLines - 1))];
-            } else {
-                *correctNote = trebleSpaces[(randint(0, sizeTrebleSpaces - 1))];
-            }
-        } else {
-            if (randint(0, 1)) {
-                *correctNote = baseSpaces[(randint(0, sizeBaseSpaces - 1))];
-            } else {
-                *correctNote = baseLines[(randint(0, sizeBaseLines - 1))];
-            }
-        }
+        setNewNote(&*correctNote);
     }
 }
 
@@ -513,28 +550,6 @@ void selectAccidental() {
     }
 }
 
-string convertToLegalNote(string inputNote) { // FIXME: Note isn't displaying
-    if ((getNote(inputNote) + getAccidental(inputNote)) == "Fb") {
-        return "E" + getOctave(inputNote);
-        DEBUG_LOG("Fb");
-    }
-    else if ((getNote(inputNote) + getAccidental(inputNote)) == "Cb") {
-        return "B" + getOctave(inputNote);
-        DEBUG_LOG("Cb");
-    }
-    else if ((getNote(inputNote) + getAccidental(inputNote)) == "E#") {
-        return "F" + getOctave(inputNote);
-        DEBUG_LOG("E#");
-    }
-    else if ((getNote(inputNote) + getAccidental(inputNote)) == "B#") {
-        return "C" + getOctave(inputNote);
-        DEBUG_LOG("B#");
-    }
-    else {
-        return inputNote;
-    }
-}
-
 void flashcardMenu(string &crct_note) {
     drawButtons();
     // crct_note = convertToLegalNote(crct_note);
@@ -580,9 +595,6 @@ void RunGUI() {
             flashcardMenu(correctNote);
         } else if (menuState == SETTINGS_MENU) {
             settingsMenu();
-            // // FIXME: Doesn't work correctly
-            // sharpButton.selected = SHARPS;
-            // flatButton.selected = !SHARPS;
         }
         // DrawTextEx(roboto, CURRENTNOTE.c_str(), {100, 100}, 40, 2, DARKGRAY);
         EndDrawing();
