@@ -215,83 +215,57 @@ inline int randint(int min, int max) {
     return dist(gen);
 }
 
+Texture2D loadAndResize(const std::string &path, float scaleFactorX, float scaleFactorY) {
+    Image img = LoadImage(path.c_str());
+    ImageResize(&img, img.width * scaleFactorX, img.height * scaleFactorY);
+    Texture2D tex = LoadTextureFromImage(img);
+    UnloadImage(img);
+    return tex;
+}
+
+Texture2D loadAndResize(const std::string &path, float scaleFactor) {
+    Image img = LoadImage(path.c_str());
+    ImageResize(&img, img.width * scaleFactor, img.height * scaleFactor);
+    Texture2D tex = LoadTextureFromImage(img);
+    UnloadImage(img);
+    return tex;
+}
+
+Texture2D loadAndResizeRelative(const std::string &path, float scaleFactor, float standardImgSize) {
+    Image img = LoadImage(path.c_str());
+    float relativeSizeX = img.width * (standardImgSize / img.width);
+    float relativeSizeY = img.height * (standardImgSize / img.width);
+    ImageResize(&img, relativeSizeX * scaleFactor, relativeSizeY * scaleFactor);
+    Texture2D tex = LoadTextureFromImage(img);
+    UnloadImage(img);
+    return tex;
+}
+
+Texture2D loadAndResizeRelative(const std::string &path, float scaleFactorX, float scaleFactorY, float standardImgSize) {
+    Image img = LoadImage(path.c_str());
+    float relativeSizeX = img.width * (standardImgSize / img.width);
+    float relativeSizeY = img.height * (standardImgSize / img.width);
+    ImageResize(&img, relativeSizeX * scaleFactorX, relativeSizeY * scaleFactorY);
+    Texture2D tex = LoadTextureFromImage(img);
+    UnloadImage(img);
+    return tex;
+}
+
 // Loads assets
 void loadAssets() {
     roboto = LoadFontEx("assets/Roboto-Black.ttf", 128, NULL, 0);
-    float relativeSizeY = 0;
-    float relativeSizeX = 0;
     float standardSize = 100;
 
-    Image tempImage = LoadImage("assets/GrandStaff.png");
-    relativeSizeX = tempImage.width * (standardSize / tempImage.width);
-    relativeSizeY = tempImage.height * (standardSize / tempImage.width);
-    ImageResize(&tempImage, relativeSizeX * 18, relativeSizeY * 18);
-    grandStaffTexture = LoadTextureFromImage(tempImage);
-    UnloadImage(tempImage);
-
-    tempImage = LoadImage("assets/sharp.png");
-    relativeSizeX = tempImage.width * (standardSize / tempImage.width);
-    relativeSizeY = tempImage.height * (standardSize / tempImage.width);
-    ImageResize(&tempImage, relativeSizeX / 4, relativeSizeY / 4);
-    sharpTexture = LoadTextureFromImage(tempImage);
-    UnloadImage(tempImage);
-
-    tempImage = LoadImage("assets/Flat.png");
-    relativeSizeX = tempImage.width * (standardSize / tempImage.width);
-    relativeSizeY = tempImage.height * (standardSize / tempImage.width);
-    ImageResize(&tempImage, relativeSizeX / 4, relativeSizeY / 4);
-    flatTexture = LoadTextureFromImage(tempImage);
-    UnloadImage(tempImage);
-
-    tempImage = LoadImage("assets/natural.png");
-    relativeSizeX = tempImage.width * (standardSize / tempImage.width);
-    relativeSizeY = tempImage.height * (standardSize / tempImage.width);
-    ImageResize(&tempImage, relativeSizeX / 4, relativeSizeY / 4);
-    naturalTexture = LoadTextureFromImage(tempImage);
-    UnloadImage(tempImage);
-
-    tempImage = LoadImage("assets/QuarterNote.png");
-    relativeSizeX = tempImage.width * (standardSize / tempImage.width);
-    relativeSizeY = tempImage.height * (standardSize / tempImage.width);
-    ImageResize(&tempImage, relativeSizeX / 2, relativeSizeY / 2);
-    noteTexture = LoadTextureFromImage(tempImage);
-    UnloadImage(tempImage);
-
-    // TODO: Scale ledger line correctly
-    tempImage = LoadImage("assets/LedgerLine.png");
-    relativeSizeX = tempImage.width * (standardSize / tempImage.width);
-    relativeSizeY = tempImage.height * (standardSize / tempImage.width);
-    ImageResize(&tempImage, relativeSizeX / 1.2, relativeSizeY * 1.5);
-    ledgerTexture = LoadTextureFromImage(tempImage);
-    UnloadImage(tempImage);
-
-    tempImage = LoadImage("assets/SettingsIcon.png");
-    relativeSizeX = tempImage.width * (standardSize / tempImage.width);
-    relativeSizeY = tempImage.height * (standardSize / tempImage.width);
-    ImageResize(&tempImage, relativeSizeX / 1.5, relativeSizeY / 1.5);
-    settingsTexture = LoadTextureFromImage(tempImage);
-    UnloadImage(tempImage);
-
-    tempImage = LoadImage("assets/CloseButton.png");
-    relativeSizeX = tempImage.width * (standardSize / tempImage.width);
-    relativeSizeY = tempImage.height * (standardSize / tempImage.width);
-    ImageResize(&tempImage, relativeSizeX / 1.5, relativeSizeY / 1.5);
-    closeSettingsTexture = LoadTextureFromImage(tempImage);
-    UnloadImage(tempImage);
-
-    tempImage = LoadImage("assets/Flat.png");
-    relativeSizeX = tempImage.width * (standardSize / tempImage.width);
-    relativeSizeY = tempImage.height * (standardSize / tempImage.width);
-    ImageResize(&tempImage, relativeSizeX / 5, relativeSizeY / 5);
-    flatButtonTexture = LoadTextureFromImage(tempImage);
-    UnloadImage(tempImage);
-
-    tempImage = LoadImage("assets/sharp.png");
-    relativeSizeX = tempImage.width * (standardSize / tempImage.width);
-    relativeSizeY = tempImage.height * (standardSize / tempImage.width);
-    ImageResize(&tempImage, relativeSizeX / 5, relativeSizeY / 5);
-    sharpButtonTexture = LoadTextureFromImage(tempImage);
-    UnloadImage(tempImage);
+    grandStaffTexture = loadAndResizeRelative("assets/GrandStaff.png", 18, standardSize);
+    sharpTexture = loadAndResizeRelative("assets/sharp.png", 0.25f, standardSize);
+    flatTexture = loadAndResizeRelative("assets/Flat.png", 0.25f, standardSize);
+    naturalTexture = loadAndResizeRelative("assets/natural.png", 0.25f, standardSize);
+    noteTexture = loadAndResizeRelative("assets/QuarterNote.png", 0.5f, standardSize);
+    ledgerTexture = loadAndResizeRelative("assets/LedgerLine.png", 0.8333f, 0.6666f, standardSize);
+    settingsTexture = loadAndResizeRelative("assets/SettingsIcon.png", 0.6666f, standardSize);
+    closeSettingsTexture = loadAndResizeRelative("assets/CloseButton.png", 0.6666f, standardSize);
+    flatButtonTexture = loadAndResizeRelative("assets/Flat.png", 0.2f, standardSize);
+    sharpButtonTexture = loadAndResizeRelative("assets/sharp.png", 0.2f, standardSize);
 }
 
 // Wait in miliseconds
