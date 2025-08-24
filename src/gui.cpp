@@ -28,16 +28,7 @@ enum ButtonType {SQUARE, CIRCLE};
 enum MenuState {FLASHCARD_MENU, SETTINGS_MENU};
 
 //| Template functions
-// Adds button info to associated lists
-// PARAMETERS
-// buttonName is a string by which the button will be identified with.
-// buttonLocation is where the button is positioned.
-// buttonSize is the size of the hitbox of the button.
-// buttonType is a string that can either be "circle" or "square" which determines the shape of the hitbox.
-void addButton(string buttonName, Vector2 buttonLocation, float buttonSize, string buttonType, Texture2D buttonTexture);
 inline string to_lowercase(const string &str);
-void mouseLogic(char hoveredBtn, Vector2 toggleBtnLoc, string correctNote); 
-void drawNote(string useNote, Color tint);
 template <typename T> inline optional<unsigned int> indexOf(const T& itm, const vector<T>& vec);
 template <typename T, size_t N> inline optional<unsigned int> indexOf(const T& itm, const T (&arr)[N]);
 template <typename T, size_t N> inline constexpr size_t arraySize(T (&)[N]);
