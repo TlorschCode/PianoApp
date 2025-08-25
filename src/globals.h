@@ -1,8 +1,11 @@
 #pragma once
 #include <string>
 #include <atomic>
+#include "notes.hpp"
+#include <vector>
 
-extern std::string CURRENTNOTE;
+extern std::vector<Note> notes;
+extern Note CURRENTNOTE;
 extern std::atomic<bool> RUNNINGPROGRAM;
 extern std::atomic<bool> SHARPS;
 extern std::atomic<double> VOLUMETHRESHOLD;

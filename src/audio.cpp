@@ -12,6 +12,7 @@
 #include "../lib/miniaudio.h"
 #include "../lib/fftw/fftw3.h"
 #include "globals.h"
+#include "notes.hpp"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -31,22 +32,54 @@ ma_device device;
 
 using namespace std;
 
-string frequency_to_note(double freq) {
-    if (freq <= 0) return "???";
-    int A4 = 440;
-    int noteIndex = round(12 * log2(freq / A4)) + 69;
-    vector<string> notes = {};
+Note frequency_to_note(double freq) {
+    if (freq <= 0) return {NoteName::C, Accidental::Natural, -1}; // invalid
+
+    const double A4 = 440.0;
+    int noteIndex = static_cast<int>(round(12 * log2(freq / A4))) + 69;
+
+    // Note names in order for an octave
+    NoteName names[12] = {
+        NoteName::C, NoteName::C, NoteName::D, NoteName::D, NoteName::E,
+        NoteName::F, NoteName::F, NoteName::G, NoteName::G, NoteName::A,
+        NoteName::A, NoteName::B
+    };
+
+    Accidental accidentals[12];
     if (SHARPS) {
-        notes = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
+        accidentals[0] = Accidental::Natural;   // C
+        accidentals[1] = Accidental::Sharp;     // C#
+        accidentals[2] = Accidental::Natural;   // D
+        accidentals[3] = Accidental::Sharp;     // D#
+        accidentals[4] = Accidental::Natural;   // E
+        accidentals[5] = Accidental::Natural;   // F
+        accidentals[6] = Accidental::Sharp;     // F#
+        accidentals[7] = Accidental::Natural;   // G
+        accidentals[8] = Accidental::Sharp;     // G#
+        accidentals[9] = Accidental::Natural;   // A
+        accidentals[10] = Accidental::Sharp;    // A#
+        accidentals[11] = Accidental::Natural;  // B
     } else {
-        notes = {"C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"};
+        accidentals[0] = Accidental::Natural;   // C
+        accidentals[1] = Accidental::Flat;      // Db
+        accidentals[2] = Accidental::Natural;   // D
+        accidentals[3] = Accidental::Flat;      // Eb
+        accidentals[4] = Accidental::Natural;   // E
+        accidentals[5] = Accidental::Natural;   // F
+        accidentals[6] = Accidental::Flat;      // Gb
+        accidentals[7] = Accidental::Natural;   // G
+        accidentals[8] = Accidental::Flat;      // Ab
+        accidentals[9] = Accidental::Natural;   // A
+        accidentals[10] = Accidental::Flat;     // Bb
+        accidentals[11] = Accidental::Natural;  // B
     }
 
     int note = noteIndex % 12;
     int octave = noteIndex / 12 - 1;
 
-    return notes[note] + to_string(octave);
+    return { names[note], accidentals[note], octave };
 }
+
 
 void mic_callback(ma_device* device, void* output, const void* input, ma_uint32 frameCount) {
     const float* fInput = (const float*)input;
@@ -157,7 +190,7 @@ void InitAudio() {
                         if (peakMag >= VOLUMETHRESHOLD) {
                             CURRENTNOTE = frequency_to_note(freq);
                         } else {
-                            CURRENTNOTE = "???";  // ignore too quiet sounds
+                            CURRENTNOTE = {NoteName::C, Accidental::Natural, 0};  // ignore too quiet sounds
                         }
                     }
                 }

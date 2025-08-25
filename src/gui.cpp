@@ -17,9 +17,11 @@
 #include <vector>
 #include <optional>
 #include <cctype>
+#include <fstream>
 
 #include "../lib/raylib/include/raylib.h"
 #include "globals.h"
+#include "notes.hpp"
 
 using namespace std;
 
@@ -130,18 +132,65 @@ class Button {
         void SetSelectionColor(Color slct_color) {
             selection_color = slct_color;
         }
-        // Sets where the circle 
 };
 
 //| Global Variables
 // For note detection
 vector<Button> buttons = {};
-string trebleLines[6] = {"C4", "E4", "G4", "B4", "D5", "F5"};
-string trebleSpaces[6] = {"D4", "F4", "A4", "C5", "E5", "G5"};
-string baseLines[5] = {"G2", "B2", "D3", "F3", "A3"};
-string baseSpaces[6] = {"F2", "A2", "C3", "E3", "G3", "B3"};
-string sharpNotes[12] = {"C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"};
-string flatNotes[12] = {"C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"};
+// Treble Clef
+Note trebleLines[11] = {
+    {NoteName::E, Accidental::Natural, 4}, // bottom line
+    {NoteName::G, Accidental::Natural, 4},
+    {NoteName::B, Accidental::Natural, 4},
+    {NoteName::D, Accidental::Natural, 5},
+    {NoteName::F, Accidental::Natural, 5},
+    {NoteName::A, Accidental::Natural, 5}, // top line
+    {NoteName::C, Accidental::Natural, 6}, // ledger above
+    {NoteName::E, Accidental::Natural, 6},
+    {NoteName::G, Accidental::Natural, 6},
+    {NoteName::B, Accidental::Natural, 6},
+    {NoteName::D, Accidental::Natural, 7}
+};
+
+Note trebleSpaces[10] = {
+    {NoteName::F, Accidental::Natural, 4}, // bottom space
+    {NoteName::A, Accidental::Natural, 4},
+    {NoteName::C, Accidental::Natural, 5},
+    {NoteName::E, Accidental::Natural, 5},
+    {NoteName::G, Accidental::Natural, 5},
+    {NoteName::B, Accidental::Natural, 5},
+    {NoteName::D, Accidental::Natural, 6},
+    {NoteName::F, Accidental::Natural, 6},
+    {NoteName::A, Accidental::Natural, 6},
+    {NoteName::C, Accidental::Natural, 7}
+};
+
+// Bass Clef
+Note baseLines[9] = {
+    {NoteName::G, Accidental::Natural, 2}, // bottom line
+    {NoteName::B, Accidental::Natural, 2},
+    {NoteName::D, Accidental::Natural, 3},
+    {NoteName::F, Accidental::Natural, 3},
+    {NoteName::A, Accidental::Natural, 3},
+    {NoteName::C, Accidental::Natural, 4},
+    {NoteName::E, Accidental::Natural, 4},
+    {NoteName::G, Accidental::Natural, 4},
+    {NoteName::B, Accidental::Natural, 4} // top line
+};
+
+Note baseSpaces[10] = {
+    {NoteName::A, Accidental::Natural, 2}, // bottom space
+    {NoteName::C, Accidental::Natural, 3},
+    {NoteName::E, Accidental::Natural, 3},
+    {NoteName::G, Accidental::Natural, 3},
+    {NoteName::B, Accidental::Natural, 3},
+    {NoteName::D, Accidental::Natural, 4},
+    {NoteName::F, Accidental::Natural, 4},
+    {NoteName::A, Accidental::Natural, 4},
+    {NoteName::C, Accidental::Natural, 5},
+    {NoteName::E, Accidental::Natural, 5} // top space
+};
+
 int sizeTrebleLines = sizeof(trebleLines) / sizeof(trebleLines[0]);
 int sizeTrebleSpaces = sizeof(trebleSpaces) / sizeof(trebleSpaces[0]);
 int sizeBaseLines = sizeof(baseLines) / sizeof(baseLines[0]);
@@ -289,9 +338,9 @@ void tick() {
     TIMER += 1;
     TIMER = TIMER == 60 ? 0 : TIMER;
     newNoteTimer -= 1;
-    newNoteTimer = newNoteTimer == -1 ? 0 : newNoteTimer;
+    newNoteTimer = newNoteTimer < 0 ? 0 : newNoteTimer;
     checkNoteTimer -= 1;
-    checkNoteTimer = checkNoteTimer == -1 ? 0 : checkNoteTimer;
+    checkNoteTimer = checkNoteTimer < 0 ? 0 : checkNoteTimer;
 }
 
 // Quality of life function to display text.
@@ -315,28 +364,17 @@ void drawStaff(Texture2D txtr) {
     );
 }
 
-inline char getAccidental(string note) {
-    return (note.length() == 3) ? note.at(1) : '\0';
-}
-
-inline string getNoteAndOctave(string note) {
-    return (note.length() == 3) ? (note.substr(0, 1) + note.back()) : note;
-}
-
-inline string getNote(string note) {
-    return (note).substr(0, 1);
-}
-
-inline char getOctave(string note) {
-    return (note).back();
-}
-inline string getOctaveStr(string note) {
-    return string(1, note.back());
+void drawAccidental(Accidental accidental, int x, int y, Color tint) {
+    switch (accidental) {
+        case Accidental::Sharp: DrawTexture(sharpTexture, x - 30, y - ((sharpTexture.height / 2) - 5), tint); break;
+        case Accidental::Flat: DrawTexture(flatTexture,  x - 30, y - ((flatTexture.height / 2) + 13), tint); break;
+        case Accidental::Natural: DrawTexture(naturalTexture, x - 30, y - ((naturalTexture.height / 2) - 5), tint); break;
+    }
 }
 
 // Displays whichever note is passed into it.
 // The tint of the textures is changeable, but defaults to White.
-void drawNote(string useNote, Color tint = WHITE) {
+void drawNote(Note note, Color tint = WHITE) {
     // 44.5 pixels between each line
     // 495 is the bottom line for Treble Clef, or E4
     // 803 is the bottom line for Base Clef, or G2
@@ -351,78 +389,61 @@ void drawNote(string useNote, Color tint = WHITE) {
     int noteYOffset = 45;
 
     //# Note Decoding
-    string note = getNoteAndOctave(useNote);
-    char accidental = getAccidental(useNote);
-    bool isTrebleLine = indexOf(note, trebleLines) != nullopt;
-    bool isTrebleSpace = indexOf(note, trebleSpaces) != nullopt;
+    Accidental accidental = note.accidental;
+    Note testNote = {note.name, Accidental::Natural, note.octave};
+    bool isTrebleLine = indexOf(testNote, trebleLines) != nullopt;
+    bool isTrebleSpace = indexOf(testNote, trebleSpaces) != nullopt;
     bool isTreble = isTrebleLine || isTrebleSpace;
-    bool isBaseLine = indexOf(note, baseLines) != nullopt;
-    bool isBaseSpace = indexOf(note, baseSpaces) != nullopt;
+    bool isBaseLine = indexOf(testNote, baseLines) != nullopt;
+    bool isBaseSpace = indexOf(testNote, baseSpaces) != nullopt;
     bool isBase = isBaseLine || isBaseSpace;
 
     //# Note Rendering
     if (isTreble) {
-        y = isTrebleLine ? 538 - (noteStep * indexOf(note, trebleLines).value_or(-1)) : 513 - (noteStep * indexOf(note, trebleSpaces).value_or(-1));
-        if (note == "C4") {
+        // FIXME: The positioning is off
+        y = isTrebleLine ? 538 - (noteStep * indexOf(testNote, trebleLines).value_or(-1)) : 513 - (noteStep * indexOf(testNote, trebleSpaces).value_or(-1));
+        if (testNote.name == NoteName::C && testNote.octave == 4) {
             accidentalXOffset -= 10;
             DrawTexture(ledgerTexture, x + ledgerXOffset, y + ledgerYOffset, tint);
         }
         DrawTexture(noteTexture, x, y - ((noteTexture.height / 2) + noteYOffset), tint);
-        if (accidental != '\0') {
-            switch (accidental) {
-                case '#':
-                    DrawTexture(sharpTexture, x + accidentalXOffset, y - ((sharpTexture.height / 2) + sharpYOffset), tint);
-                    break;
-                case 'b':
-                    DrawTexture(flatTexture, x + accidentalXOffset, y - ((flatTexture.height / 2) + flatYOffset), tint);
-                    break;
-                case 'N':
-                    DrawTexture(naturalTexture, x + accidentalXOffset,  y - ((naturalTexture.height / 2) + sharpYOffset), tint);
-                    break;
-            }
+        if (accidental != Accidental::Natural) {
+            drawAccidental(accidental, x, y, tint);
         }
     } else if (isBase) {  //# Base Clef
-        y = isBaseLine ? 800 - (noteStep * indexOf(note, baseLines).value_or(-1)) :  822 - (noteStep * indexOf(note, baseSpaces).value_or(-1));
+        // FIXME: The positioning is off
+        y = isBaseLine ? 800 - (noteStep * indexOf(testNote, baseLines).value_or(-1)) :  822 - (noteStep * indexOf(testNote, baseSpaces).value_or(-1));
         DrawTexture(noteTexture, x, y - ((noteTexture.height / 2) + noteYOffset), tint);
-        if (accidental != '\0') {
-            switch (accidental) {
-                case '#':
-                    DrawTexture(sharpTexture, x + accidentalXOffset, y - ((sharpTexture.height / 2) + sharpYOffset), tint);
-                    break;
-                case 'b':
-                    DrawTexture(flatTexture, x + accidentalXOffset, y - ((flatTexture.height / 2) + flatYOffset), tint);
-                    break;
-                case 'N':
-                    DrawTexture(naturalTexture, x + accidentalXOffset,  y - ((naturalTexture.height / 2) + sharpYOffset), tint);
-                    break;
-            }
+        if (accidental != Accidental::Natural) {
+            drawAccidental(accidental, x, y, tint);
         }
     }
 }
 
-string convertToLegalNote(string inputNote) { // FIXME: Note isn't displaying
-    if ((getNote(inputNote) + getAccidental(inputNote)) == "Fb") {
+Note convertToLegalNote(Note inputNote) {
+    Note testNote = {inputNote.name, inputNote.accidental, 1};
+    if (testNote == Note{NoteName::F, Accidental::Flat, 1}) {
         DEBUG_LOG("Fb");
-        return "E" + getOctaveStr(inputNote);
+        return Note{NoteName::E, Accidental::Natural, inputNote.octave};
     }
-    else if ((getNote(inputNote) + getAccidental(inputNote)) == "Cb") {
+    else if (testNote == Note{NoteName::C, Accidental::Flat, 1}) {
         DEBUG_LOG("Cb");
-        return "B" + getOctaveStr(inputNote);
+        return Note{NoteName::B, Accidental::Natural, inputNote.octave};
     }
-    else if ((getNote(inputNote) + getAccidental(inputNote)) == "E#") {
+    else if (testNote == Note{NoteName::E, Accidental::Sharp, 1}) {
         DEBUG_LOG("E#");
-        return "F" + getOctaveStr(inputNote);
+        return Note{NoteName::F, Accidental::Natural, inputNote.octave};
     }
-    else if ((getNote(inputNote) + getAccidental(inputNote)) == "B#") {
+    else if (testNote == Note{NoteName::B, Accidental::Sharp, 1}) {
         DEBUG_LOG("B#");
-        return "C" + getOctaveStr(inputNote);
+        return Note{NoteName::C, Accidental::Natural, inputNote.octave};
     }
     else {
         return inputNote;
     }
 }
 
-void setNewNote(string *_correctNote) {
+void setNewNote(Note *_correctNote, float accidentalProbability = 0.5f) {
     if (randint(0, 1)) {
         if (randint(0, 1)) {
             *_correctNote = trebleLines[(randint(0, sizeTrebleLines - 1))];
@@ -436,50 +457,48 @@ void setNewNote(string *_correctNote) {
             *_correctNote = baseLines[(randint(0, sizeBaseLines - 1))];
         }
     }
-    if (randint(0, 2) == 0) {
+    if (randint(0, ceil(1 / accidentalProbability)) == 0) {
         if (SHARPS) {
-            *_correctNote = getNote(*_correctNote) + "#" + getOctave(*_correctNote);
+            *_correctNote = {(*_correctNote).name, Accidental::Sharp, (*_correctNote).octave};
         } else {
-            *_correctNote = getNote(*_correctNote) + "b" + getOctave(*_correctNote);
+            *_correctNote = {(*_correctNote).name, Accidental::Flat, (*_correctNote).octave};
         }
         *_correctNote = convertToLegalNote(*_correctNote);
     }
 }
 
+// Enharmonic table for one octave using indexing
+Note enharmonicSwap(Note note) {
+    Accidental accidental = note.accidental;
+    if (SHARPS && accidental == Accidental::Flat) {
+        if (note.name == NoteName::D) return Note{NoteName::C, Accidental::Sharp, note.octave};
+        if (note.name == NoteName::E) return Note{NoteName::D, Accidental::Sharp, note.octave};
+        if (note.name == NoteName::G) return Note{NoteName::F, Accidental::Sharp, note.octave};
+        if (note.name == NoteName::A) return Note{NoteName::G, Accidental::Sharp, note.octave};
+        if (note.name == NoteName::B) return Note{NoteName::A, Accidental::Sharp, note.octave};
+    } else if (accidental == Accidental::Sharp && !SHARPS) {
+        if (note.name == NoteName::C) return Note{NoteName::D, Accidental::Flat, note.octave};
+        if (note.name == NoteName::D) return Note{NoteName::E, Accidental::Flat, note.octave};
+        if (note.name == NoteName::F) return Note{NoteName::G, Accidental::Flat, note.octave};
+        if (note.name == NoteName::G) return Note{NoteName::A, Accidental::Flat, note.octave};
+        if (note.name == NoteName::A) return Note{NoteName::B, Accidental::Flat, note.octave};
+    }
+    return note;
+}
+
 // Checks whether the correct note is being played.
 // Handles new target note logic and renders the target note on the screen.
-void checkNote(string *correctNote) {
-    char octave = getOctave(*correctNote);
-    char accidental = getAccidental(*correctNote);
-    string note = getNote(*correctNote);
-    if (SHARPS) {
-        if (accidental == 'b') {
-            DEBUG_LOG(note + accidental);
-            int index = indexOf((note + accidental), flatNotes).value_or(-1);
-            DEBUG_LOG(index);
-            DEBUG_LOG(sharpNotes[index]);
-            *correctNote = sharpNotes[index] + octave;
-        }
-    } else {
-        if (accidental == '#') {
-            DEBUG_LOG(note + accidental);
-            int index = indexOf((note + accidental), sharpNotes).value_or(-1);
-            DEBUG_LOG(index);
-            DEBUG_LOG(flatNotes[index]);
-            *correctNote = flatNotes[index] + octave;
-        }
-    }
-    if (CURRENTNOTE == *correctNote) {
-        if (checkNoteTimer == 1) {
-            newNoteTimer = 15;
-        } else if (checkNoteTimer == 0) {
-            checkNoteTimer = 6; // Makes sure the current note stays for a second after reaching it.
-        }
-    }
-    if (newNoteTimer > 0) {
-        drawNote(*correctNote);
+void checkNote(Note *correctNote) {
+    Accidental accidental = correctNote->accidental;
+    Note testNote = {(*correctNote).name, accidental, 1};
+    char octave = correctNote->octave;
+    *correctNote = enharmonicSwap(*correctNote);
+    if (CURRENTNOTE == *correctNote && checkNoteTimer == 0) {
+        checkNoteTimer = 30;
+        newNoteTimer = 1;
     }
     if (newNoteTimer == 1) {
+        DEBUG_LOG("HIT NOTE");
         setNewNote(&*correctNote);
     }
 }
@@ -550,11 +569,9 @@ void selectAccidental() {
     }
 }
 
-void flashcardMenu(string &crct_note) {
-    drawButtons();
-    // crct_note = convertToLegalNote(crct_note);
-    checkNote(&crct_note);
+void flashcardMenu(Note &crct_note) {
     drawStaff(grandStaffTexture);
+    checkNote(&crct_note);
     drawNote(CURRENTNOTE, Transparent);
     drawNote(crct_note, Color {255, 255, 255, 75});
 }
@@ -583,7 +600,7 @@ void RunGUI() {
 
     string hoveredBtn = "???";
     newNoteTimer = 0;
-    string correctNote = "G#3";
+    Note correctNote = {NoteName::G, Accidental::Sharp, 3};
     bool was_clicked = false;
 
     while (!WindowShouldClose()) {
@@ -596,7 +613,6 @@ void RunGUI() {
         } else if (menuState == SETTINGS_MENU) {
             settingsMenu();
         }
-        // DrawTextEx(roboto, CURRENTNOTE.c_str(), {100, 100}, 40, 2, DARKGRAY);
         EndDrawing();
         tick();
     }

@@ -1,0 +1,63 @@
+// Convert NoteName to string for C++ code
+string noteNameToString(NoteName name) {
+    switch (name) {
+        case NoteName::C: return "NoteName::C";
+        case NoteName::D: return "NoteName::D";
+        case NoteName::E: return "NoteName::E";
+        case NoteName::F: return "NoteName::F";
+        case NoteName::G: return "NoteName::G";
+        case NoteName::A: return "NoteName::A";
+        case NoteName::B: return "NoteName::B";
+    }
+    return "";
+}
+
+// Convert Accidental to string for C++ code
+string accidentalToString(Accidental acc) {
+    switch (acc) {
+        case Accidental::Natural: return "Accidental::Natural";
+        case Accidental::Sharp:   return "Accidental::Sharp";
+        case Accidental::Flat:    return "Accidental::Flat";
+    }
+    return "";
+}
+vector<Note> generateAllNotes(int minOctave, int maxOctave) {
+    vector<Note> notes;
+    for (int octave = minOctave; octave <= maxOctave; ++octave) {
+        for (int n = 0; n <= 6; ++n) { // C..B
+            notes.push_back({static_cast<NoteName>(n), Accidental::Natural, octave});
+            notes.push_back({static_cast<NoteName>(n), Accidental::Sharp, octave});
+            notes.push_back({static_cast<NoteName>(n), Accidental::Flat, octave});
+        }
+    }
+    return notes;
+}
+// Write vector to file as valid C++ code
+void saveVectorToFile(const vector<Note>& notes, const string& filename) {
+    ofstream out(filename);
+    if (!out.is_open()) {
+        cerr << "Error: Could not open file " << filename << endl;
+        return;
+    }
+
+    out << "vector<Note> notes = {\n";
+    for (size_t i = 0; i < notes.size(); i++) {
+        const Note& n = notes[i];
+        out << "    { " 
+            << noteNameToString(n.name) << ", "
+            << accidentalToString(n.accidental) << ", "
+            << n.octave << " }";
+        if (i < notes.size() - 1) out << ",";
+        out << "\n";
+    }
+    out << "};\n";
+
+    out.close();
+    cout << "Vector saved to " << filename << endl;
+}
+
+void main {
+    vector<Note> notes = generateAllNotes(2, 5);
+
+    saveVectorToFile(notes, "notesss.txt");
+}

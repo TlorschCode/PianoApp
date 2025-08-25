@@ -1,8 +1,4 @@
-#include "globals.h"
-#include "notes.hpp"
-#include <vector>
-
-std::vector<Note> notes = {
+vector<Note> notes = {
     { NoteName::C, Accidental::Natural, 2 },
     { NoteName::C, Accidental::Sharp, 2 },
     { NoteName::C, Accidental::Flat, 2 },
@@ -88,7 +84,3 @@ std::vector<Note> notes = {
     { NoteName::B, Accidental::Sharp, 5 },
     { NoteName::B, Accidental::Flat, 5 }
 };
-Note CURRENTNOTE = {NoteName::C, Accidental::Natural, 0};
-std::atomic<bool> RUNNINGPROGRAM = true;
-std::atomic<bool> SHARPS = true;
-std::atomic<double> VOLUMETHRESHOLD = 1.0;
