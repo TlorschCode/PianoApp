@@ -2,7 +2,7 @@
 #include "notes.hpp"
 #include <vector>
 
-std::vector<Note> notes = {
+std::vector<Note> allNotes = {
     { NoteName::C, Accidental::Natural, 2 },
     { NoteName::C, Accidental::Sharp, 2 },
     { NoteName::C, Accidental::Flat, 2 },

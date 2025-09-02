@@ -401,7 +401,7 @@ void drawNote(Note note, Color tint = WHITE) {
     //# Note Rendering
     if (isTreble) {
         // FIXME: The positioning is off
-        y = isTrebleLine ? 538 - (noteStep * indexOf(testNote, trebleLines).value_or(-1)) : 513 - (noteStep * indexOf(testNote, trebleSpaces).value_or(-1));
+        y = isTrebleLine ? 492 - (noteStep * indexOf(testNote, trebleLines).value_or(-1)) : 468 - (noteStep * indexOf(testNote, trebleSpaces).value_or(-1));
         if (testNote.name == NoteName::C && testNote.octave == 4) {
             accidentalXOffset -= 10;
             DrawTexture(ledgerTexture, x + ledgerXOffset, y + ledgerYOffset, tint);
@@ -495,11 +495,12 @@ void checkNote(Note *correctNote) {
     *correctNote = enharmonicSwap(*correctNote);
     if (CURRENTNOTE == *correctNote && checkNoteTimer == 0) {
         checkNoteTimer = 30;
-        newNoteTimer = 1;
+        newNoteTimer = 10;
     }
     if (newNoteTimer == 1) {
         DEBUG_LOG("HIT NOTE");
         setNewNote(&*correctNote);
+        DEBUG_LOG("NEW NOTE: " << *correctNote);
     }
 }
 
@@ -580,13 +581,22 @@ void settingsMenu() {
     selectAccidental();
 }
 
+void testAllNotes() {
+    for (Note note : allNotes) {
+        ClearBackground(RAYWHITE);
+        drawStaff(grandStaffTexture);
+        drawNote(note, WHITE);
+        // DEBUG_LOG(to_string(Note));
+        wait(1000);
+    }
+}
+
 // Handles all GUI logic
 void RunGUI() {
     InitWindow(WINWIDTH, WINHEIGHT, "Piano Flashcard App");
     SetTargetFPS(60);
     SetTextLineSpacing(16);
     loadAssets();
-
     Button settingsButton("settings", Vector2({WINWIDTH - 80, 80}), CIRCLE, settingsTexture, vector<MenuState> {FLASHCARD_MENU}, false);
     buttons.push_back(settingsButton);
     Button closeSettingsButton("close_settings", Vector2({WINWIDTH - 80, 80}), CIRCLE, closeSettingsTexture, vector<MenuState> {SETTINGS_MENU}, false);
@@ -600,8 +610,10 @@ void RunGUI() {
 
     string hoveredBtn = "???";
     newNoteTimer = 0;
-    Note correctNote = {NoteName::G, Accidental::Sharp, 3};
+    Note correctNote = {NoteName::F, Accidental::Sharp, 4};
     bool was_clicked = false;
+
+    testAllNotes();
 
     while (!WindowShouldClose()) {
         buttonLogic(mouseLogic(&hoveredBtn), hoveredBtn);
