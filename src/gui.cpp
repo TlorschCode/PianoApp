@@ -1,13 +1,11 @@
 #ifdef DEBUG
     #include <iostream>
-    #define DEBUG_LOG(x) std::cout << "  DEBUG:  " << x << "\n"
+    #define DEBUG_LOG(x) cout << "  DEBUG:  " << x << "\n"
 #else
     #define DEBUG_LOG(x)
 #endif
 
-// TODO: Add volume slider
-
-//| INIT
+//| INIT  vvv
 #include <string>
 #include <atomic>
 #include <algorithm>
@@ -24,6 +22,23 @@
 #include "notes.hpp"
 
 using namespace std;
+//| END INIT ^^^
+
+// TODO: Add volume slider
+// TODO: Add settings option to disable accidentals
+// TODO: Make ledger line toggle in settings menu
+// TODO: Make base/treble clef toggle in settings menu
+
+// MARK: Variables
+//| DEFINITIONS AND CONSTANTS
+#define TREBLE_CLEF   "\xF0\x9D\x84\x9E" // U+1D11E 𝄞
+#define BASS_CLEF     "\xF0\x9D\x84\xA2" // U+1D122 𝄢
+#define SYSTEM_BRACE  "\xEE\x80\x80"     // U+E000 (Bravura PUA)
+
+const int FRAMERATE = {60};
+// const int FRAME = floor(1000 / FRAMERATE);
+const int FRAME = {16};
+const char* ASSET_PATH = {"src/assets/"};
 
 const float WINWIDTH = 1920;
 const float WINHEIGHT = 1080;
@@ -196,13 +211,10 @@ int sizeTrebleSpaces = sizeof(trebleSpaces) / sizeof(trebleSpaces[0]);
 int sizeBaseLines = sizeof(baseLines) / sizeof(baseLines[0]);
 int sizeBaseSpaces = sizeof(baseSpaces) / sizeof(baseSpaces[0]);
 // Timers and frames
-int newNoteTimer = 0;
-int checkNoteTimer = 0;
-int TIMER = 0;
-const int FRAMERATE = 60;
-// const int FRAME = floor(1000 / FRAMERATE);
-const int FRAME = 16;
-MenuState menuState = FLASHCARD_MENU;
+int newNoteTimer = {};
+int checkNoteTimer = {};
+int TIMER = {};
+MenuState menuState = {FLASHCARD_MENU};
 
 //| Template variables
 Texture2D grandStaffTexture;
@@ -216,6 +228,8 @@ Texture2D closeSettingsTexture;
 Texture2D flatButtonTexture;
 Texture2D sharpButtonTexture;
 Font roboto;
+Font bravuraText;
+Font bravura;
 
 //| Colors
 Color Transparent = {255, 255, 255, 127};
@@ -254,8 +268,8 @@ inline bool containsVal(const T& itm, const vector<T>& vec) {
 // itm -> item to search for
 // arr -> C-style array to search through
 template <typename T, size_t N>
-std::optional<unsigned int> indexOf(const T& itm, const T (&arr)[N]) {
-    auto it = std::find(arr, arr + N, itm);
+optional<unsigned int> indexOf(const T& itm, const T (&arr)[N]) {
+    auto it = find(arr, arr + N, itm);
     if (it != arr + N) {
         return static_cast<unsigned int>(it - arr);
     }
@@ -270,28 +284,31 @@ constexpr size_t arraySize(T (&)[N]) {
 }
 
 inline int randint(int min, int max) {
-    std::uniform_int_distribution<> dist(min, max);
+    uniform_int_distribution<> dist(min, max);
     return dist(gen);
 }
 
-Texture2D loadAndResize(const std::string &path, float scaleFactorX, float scaleFactorY) {
-    Image img = LoadImage(path.c_str());
+Texture2D loadAndResize(const char* path, float scaleFactorX, float scaleFactorY) {
+    string filePath = string(ASSET_PATH) + path;
+    Image img = LoadImage(filePath.c_str());
     ImageResize(&img, img.width * scaleFactorX, img.height * scaleFactorY);
     Texture2D tex = LoadTextureFromImage(img);
     UnloadImage(img);
     return tex;
 }
 
-Texture2D loadAndResize(const std::string &path, float scaleFactor) {
-    Image img = LoadImage(path.c_str());
+Texture2D loadAndResize(const char* path, float scaleFactor) {
+    string filePath = string(ASSET_PATH) + path;
+    Image img = LoadImage(filePath.c_str());
     ImageResize(&img, img.width * scaleFactor, img.height * scaleFactor);
     Texture2D tex = LoadTextureFromImage(img);
     UnloadImage(img);
     return tex;
 }
 
-Texture2D loadAndResizeRelative(const std::string &path, float scaleFactor, float standardImgSize) {
-    Image img = LoadImage(path.c_str());
+Texture2D loadAndResizeRelative(const char* path, float scaleFactor, float standardImgSize) {
+    string filePath = string(ASSET_PATH) + path;
+    Image img = LoadImage(filePath.c_str());
     float relativeSizeX = img.width * (standardImgSize / img.width);
     float relativeSizeY = img.height * (standardImgSize / img.width);
     ImageResize(&img, relativeSizeX * scaleFactor, relativeSizeY * scaleFactor);
@@ -300,8 +317,9 @@ Texture2D loadAndResizeRelative(const std::string &path, float scaleFactor, floa
     return tex;
 }
 
-Texture2D loadAndResizeRelative(const std::string &path, float scaleFactorX, float scaleFactorY, float standardImgSize) {
-    Image img = LoadImage(path.c_str());
+Texture2D loadAndResizeRelative(const char* path, float scaleFactorX, float scaleFactorY, float standardImgSize) {
+    string filePath = string(ASSET_PATH) + path;
+    Image img = LoadImage(filePath.c_str());
     float relativeSizeX = img.width * (standardImgSize / img.width);
     float relativeSizeY = img.height * (standardImgSize / img.width);
     ImageResize(&img, relativeSizeX * scaleFactorX, relativeSizeY * scaleFactorY);
@@ -312,24 +330,28 @@ Texture2D loadAndResizeRelative(const std::string &path, float scaleFactorX, flo
 
 // Loads assets
 void loadAssets() {
-    roboto = LoadFontEx("assets/Roboto-Black.ttf", 128, NULL, 0);
+    string font_path = string(ASSET_PATH) + "Roboto-Black.ttf";
+    roboto = LoadFontEx(font_path.c_str(), 128, NULL, 0);
+    font_path = string(ASSET_PATH) + "BravuraText.otf";
+    bravura = LoadFontEx(font_path.c_str(), 128, NULL, 0);
     float standardSize = 100;
 
-    grandStaffTexture = loadAndResizeRelative("assets/GrandStaff.png", 18, standardSize);
-    sharpTexture = loadAndResizeRelative("assets/sharp.png", 0.25f, standardSize);
-    flatTexture = loadAndResizeRelative("assets/Flat.png", 0.25f, standardSize);
-    naturalTexture = loadAndResizeRelative("assets/natural.png", 0.25f, standardSize);
-    noteTexture = loadAndResizeRelative("assets/QuarterNote.png", 0.5f, standardSize);
-    ledgerTexture = loadAndResizeRelative("assets/LedgerLine.png", 0.8333f, 0.6666f, standardSize);
-    settingsTexture = loadAndResizeRelative("assets/SettingsIcon.png", 0.6666f, standardSize);
-    closeSettingsTexture = loadAndResizeRelative("assets/CloseButton.png", 0.6666f, standardSize);
-    flatButtonTexture = loadAndResizeRelative("assets/Flat.png", 0.3f, standardSize);
-    sharpButtonTexture = loadAndResizeRelative("assets/sharp.png", 0.3f, standardSize);
+
+    grandStaffTexture = loadAndResizeRelative("GrandStaff.png", 18, standardSize);
+    sharpTexture = loadAndResizeRelative("sharp.png", 0.25f, standardSize);
+    flatTexture = loadAndResizeRelative("Flat.png", 0.25f, standardSize);
+    naturalTexture = loadAndResizeRelative("natural.png", 0.25f, standardSize);
+    noteTexture = loadAndResizeRelative("QuarterNote.png", 0.5f, standardSize);
+    ledgerTexture = loadAndResizeRelative("LedgerLine.png", 0.8333f, 0.6666f, standardSize);
+    settingsTexture = loadAndResizeRelative("SettingsIcon.png", 0.6666f, standardSize);
+    closeSettingsTexture = loadAndResizeRelative("CloseButton.png", 0.6666f, standardSize);
+    flatButtonTexture = loadAndResizeRelative("Flat.png", 0.3f, standardSize);
+    sharpButtonTexture = loadAndResizeRelative("sharp.png", 0.3f, standardSize);
 }
 
 // Wait in miliseconds
 void wait(int time) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(time));
+    this_thread::sleep_for(chrono::milliseconds(time));
 }
 
 // Changes timers and wait 1/60th of a second.
@@ -613,12 +635,13 @@ void RunGUI() {
     Note correctNote = {NoteName::F, Accidental::Sharp, 4};
     bool was_clicked = false;
 
-    testAllNotes();
+    // testAllNotes();
 
     while (!WindowShouldClose()) {
         buttonLogic(mouseLogic(&hoveredBtn), hoveredBtn);
         ClearBackground(RAYWHITE);
         drawButtons();
+        DrawTextEx(bravuraText, TREBLE_CLEF, Vector2({WINWIDTH / 2, WINHEIGHT / 2}), 30, 2, WHITE);
 
         if (menuState == FLASHCARD_MENU) {
             flashcardMenu(correctNote);

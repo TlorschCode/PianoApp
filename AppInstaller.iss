@@ -27,7 +27,7 @@ Source: "lib\fftw\*"; DestDir: "{app}\lib\fftw"; Flags: ignoreversion recursesub
 Source: "lib\miniaudio.h"; DestDir: "{app}\lib"; Flags: ignoreversion
 
 ; Copy assets (images, fonts, etc.)
-Source: "assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "src\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; App icon file
 Source: "FlashcardApp.ico"; DestDir: "{app}"; Flags: ignoreversion
