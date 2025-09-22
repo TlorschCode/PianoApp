@@ -5,6 +5,7 @@
     #define DEBUG_LOG(x)
 #endif
 
+// MARK: Init
 //| INIT  vvv
 #include <string>
 #include <atomic>
@@ -29,7 +30,7 @@ using namespace std;
 // TODO: Make ledger line toggle in settings menu
 // TODO: Make base/treble clef toggle in settings menu
 
-// MARK: Variables
+// MARK: Constants
 //| DEFINITIONS AND CONSTANTS
 #define TREBLE_CLEF   "\xF0\x9D\x84\x9E" // U+1D11E 𝄞
 #define BASS_CLEF     "\xF0\x9D\x84\xA2" // U+1D122 𝄢
@@ -57,39 +58,47 @@ template <typename T, size_t N> inline optional<unsigned int> indexOf(const T& i
 template <typename T, size_t N> inline constexpr size_t arraySize(T (&)[N]);
 template <typename T> inline bool containsVal(const T& itm, const vector<T>& vec);
 
+// MARK: CLASSES
 //| CLASSES
-class Button {
+class ButtonRenderer {
     private:
-        float ocapacity = 255;
-        Color color = {255, 255, 255, 255};
+        Color color = WHITE;
         Rectangle rect = {0, 0, 0, 0};
         Rectangle outlineRect = {0, 0, 0, 0};
-        Color selection_color = {175, 175, 175, 255};
         float size;
         float outlineSize;
-    public:
-        string name;
-        Vector2 pos;
-        ButtonType type;
-        Texture2D texture;
-        vector<MenuState> available_states;
-        bool shown = true;
         bool selected;
-        bool selectable;
-        Button(string btn_name, Vector2 btn_pos, ButtonType btn_type, Texture2D btn_texture, vector<MenuState> btn_available_states, bool btn_selectable = true) {
-            name = btn_name;
-            pos = btn_pos;
-            type = btn_type;
-            texture = btn_texture;
-            available_states = btn_available_states;
-            selected = false;
-            selectable = btn_selectable;
-            size = texture.width / 2;
-            if (type == SQUARE) {
-                rect = {pos.x - (texture.width / 2), pos.y - (texture.height / 2), static_cast<float>(texture.width), static_cast<float>(texture.height)};
-                outlineRect = {(pos.x - (texture.width / 2)) - 5, (pos.y - (texture.height / 2)) - 5, static_cast<float>(texture.width + 10), static_cast<float>(texture.height + 10)};
-            } else {
-                outlineSize = size + (size * 0.1);
+        bool enabled;
+        ButtonType type;
+        Vector2 pos;
+    public:
+        Texture2D texture;
+        float opacity;
+        Color selectionColor;
+        ButtonRenderer(Vector2 _pos, ButtonType _type, bool _enabled, float _size, bool _selected, Rectangle _rect, Rectangle _outlineRect, Texture2D _texture, float _opacity=255, Color _selectionColor=WHITE) {
+            pos = _pos;
+            enabled = _enabled;
+            size = _size;
+            selected = _selected;
+            type = _type;
+            rect = _rect;
+            outlineRect = _outlineRect;
+            texture = _texture;
+            opacity = _opacity;
+            selectionColor = _selectionColor;
+        }
+        void Render() {
+            if (enabled) {
+                Color curColor = {color.r, color.g, color.b, opacity};
+                if (selected) {
+                    Color curSelectionColor = {selectionColor.r, selectionColor.g, selectionColor.b, opacity};
+                    if (type == CIRCLE) {
+                        DrawCircle(pos.x, pos.y, outlineSize, curSelectionColor);
+                    } else {
+                        DrawRectangleRec(outlineRect, curSelectionColor);
+                    }
+                }
+                DrawTexture(texture, pos.x - (texture.width / 2), pos.y - (texture.height / 2), curColor);
             }
         }
         void SetOutlineSize(float outline_size) {
@@ -100,30 +109,55 @@ class Button {
                 outlineRect = {(pos.x - (texture.width / 2)) - (outline_size / 2), (pos.y - (texture.height / 2)) - (outline_size / 2), static_cast<float>(texture.width + outline_size), static_cast<float>(texture.height + outline_size)};
             }
         }
-        void SetOcapacity(float target_amnt) {
-            ocapacity = target_amnt;
-            color = {255, 255, 255, static_cast<unsigned char>(ocapacity)};
+};
+class ButtonInteraction {
+    private:
+    public:
+        ButtonInteraction() {
+
+        }
+};
+class Button {
+    private:
+        Rectangle rect = {0, 0, 0, 0};
+        Rectangle outlineRect = {0, 0, 0, 0};
+        float size;
+        float outlineSize;
+    public:
+        string name;
+        Vector2 pos;
+        ButtonType type;
+        vector<MenuState> available_states;
+        bool enabled = true;
+        bool selected = false;
+        bool selectable;
+        ButtonRenderer renderer;
+        ButtonInteraction interactor;
+        Button(string btn_name, Vector2 btn_pos, ButtonType btn_type, bool btn_selectable = true, ButtonRenderer btn_renderer, Texture2D btn_texture, vector<MenuState> btn_available_states) {
+            name = btn_name;
+            pos = btn_pos;
+            type = btn_type;
+            available_states = btn_available_states;
+            selectable = btn_selectable;
+            size = btn_texture.width / 2;
+            if (type == SQUARE) {
+                rect = {pos.x - (btn_texture.width / 2), pos.y - (btn_texture.height / 2), static_cast<float>(btn_texture.width), static_cast<float>(btn_texture.height)};
+                outlineRect = {(pos.x - (btn_texture.width / 2)) - 5, (pos.y - (btn_texture.height / 2)) - 5, static_cast<float>(btn_texture.width + 10), static_cast<float>(btn_texture.height + 10)};
+            } else {
+                outlineSize = size + (size * 0.1);
+            }
+            if (type == SQUARE) {
+                renderer = ButtonRenderer(pos, type, enabled, size, selected, rect, outlineRect, btn_texture);
+            }
         }
         void AvailableVisibility(MenuState menu_state) {
-            shown = containsVal(menu_state, available_states);
-        }
-        void Render() {
-            if (shown) {
-                if (selected && selectable) {
-                    if (type == CIRCLE) {
-                        DrawCircle(pos.x, pos.y, outlineSize, selection_color);
-                    } else {
-                        DrawRectangleRec(outlineRect, selection_color);
-                    }
-                }
-                DrawTexture(texture, pos.x - (texture.width / 2), pos.y - (texture.height / 2), color);
-            }
+            enabled = containsVal(menu_state, available_states);
         }
         inline bool IsHovered(Vector2 mouse_pos) {
             if (type == CIRCLE) {
-                return CheckCollisionPointCircle(mouse_pos, pos, size) && shown;
+                return CheckCollisionPointCircle(mouse_pos, pos, size) && enabled;
             } else {
-                return CheckCollisionPointRec(mouse_pos, rect) && shown;
+                return CheckCollisionPointRec(mouse_pos, rect) && enabled;
             }
         }
         inline bool IsLeftClicked(Vector2 mouse_pos) {
@@ -136,19 +170,20 @@ class Button {
             selected = !selected;
         }
         void Hide() {
-            shown = false;
+            enabled = false;
         }
         void Show() {
-            shown = true;
+            enabled = true;
         }
         void ToggleVisibility() {
-            shown = !shown;
+            enabled = !enabled;
         }
         void SetSelectionColor(Color slct_color) {
             selection_color = slct_color;
         }
 };
 
+// MARK: Variables
 //| Global Variables
 // For note detection
 vector<Button> buttons = {};
@@ -236,6 +271,19 @@ Color Transparent = {255, 255, 255, 127};
 Color sharpCircleCol = GRAY;
 Color flatCircleCol = GRAY;
 
+// MARK: FUNCTIONS:
+
+
+
+
+
+
+
+
+
+
+
+// MARK: Utilities
 //| FUNCTIONS 
 // Returns which index itm is found at
 // Returns nullopt if no index was found
@@ -287,6 +335,24 @@ inline int randint(int min, int max) {
     uniform_int_distribution<> dist(min, max);
     return dist(gen);
 }
+
+// Wait in miliseconds
+void wait(int time) {
+    this_thread::sleep_for(chrono::milliseconds(time));
+}
+
+// Changes timers and wait 1/60th of a second.
+void tick() {
+    wait(FRAME);
+    TIMER += 1;
+    TIMER = TIMER == 60 ? 0 : TIMER;
+    newNoteTimer -= 1;
+    newNoteTimer = newNoteTimer < 0 ? 0 : newNoteTimer;
+    checkNoteTimer -= 1;
+    checkNoteTimer = checkNoteTimer < 0 ? 0 : checkNoteTimer;
+}
+
+// MARK: Assets
 
 Texture2D loadAndResize(const char* path, float scaleFactorX, float scaleFactorY) {
     string filePath = string(ASSET_PATH) + path;
@@ -349,21 +415,8 @@ void loadAssets() {
     sharpButtonTexture = loadAndResizeRelative("sharp.png", 0.3f, standardSize);
 }
 
-// Wait in miliseconds
-void wait(int time) {
-    this_thread::sleep_for(chrono::milliseconds(time));
-}
 
-// Changes timers and wait 1/60th of a second.
-void tick() {
-    wait(FRAME);
-    TIMER += 1;
-    TIMER = TIMER == 60 ? 0 : TIMER;
-    newNoteTimer -= 1;
-    newNoteTimer = newNoteTimer < 0 ? 0 : newNoteTimer;
-    checkNoteTimer -= 1;
-    checkNoteTimer = checkNoteTimer < 0 ? 0 : checkNoteTimer;
-}
+// MARK: Rendering
 
 // Quality of life function to display text.
 // Allows for custom font size.
@@ -441,6 +494,8 @@ void drawNote(Note note, Color tint = WHITE) {
         }
     }
 }
+
+// MARK: Note Logic
 
 Note convertToLegalNote(Note inputNote) {
     Note testNote = {inputNote.name, inputNote.accidental, 1};
@@ -612,6 +667,8 @@ void testAllNotes() {
         wait(1000);
     }
 }
+
+// MARK: MAIN
 
 // Handles all GUI logic
 void RunGUI() {
