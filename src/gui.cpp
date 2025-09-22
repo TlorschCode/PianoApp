@@ -60,6 +60,7 @@ template <typename T> inline bool containsVal(const T& itm, const vector<T>& vec
 
 // MARK: CLASSES
 //| CLASSES
+// FIXME: Fix unfinished button logic!
 class ButtonRenderer {
     private:
         Color color = WHITE;
